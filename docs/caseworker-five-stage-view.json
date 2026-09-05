@@ -1,0 +1,134 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "The caseworker's five-stage workspace",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": "docs/caseworker-five-stage-view.html"
+  },
+  "lanes": [
+    {
+      "id": "understand_choose",
+      "label": "Understand and choose"
+    },
+    {
+      "id": "act_complete",
+      "label": "Act and complete"
+    }
+  ],
+  "mainPath": [
+    "context",
+    "find_support",
+    "verify",
+    "refer",
+    "follow_document"
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "context"
+    ],
+    "allowedTerminals": [
+      "follow_document"
+    ],
+    "requiredPaths": [
+      {
+        "from": "context",
+        "to": "follow_document"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "context",
+      "lane": "understand_choose",
+      "col": 0,
+      "type": "frontend",
+      "label": "1. Understand needs",
+      "sublabel": "Approve the case summary",
+      "tag": "Worker approves",
+      "width": 165,
+      "height": 92
+    },
+    {
+      "id": "find_support",
+      "lane": "understand_choose",
+      "col": 1,
+      "type": "frontend",
+      "label": "2. Find support",
+      "sublabel": "Review matches and reasons",
+      "tag": "Useful choices only",
+      "width": 165,
+      "height": 92
+    },
+    {
+      "id": "verify",
+      "lane": "understand_choose",
+      "col": 2,
+      "type": "frontend",
+      "label": "3. Confirm details",
+      "sublabel": "Record missing provider answers",
+      "tag": "No duplicate checking",
+      "width": 165,
+      "height": 92
+    },
+    {
+      "id": "refer",
+      "lane": "act_complete",
+      "col": 2,
+      "type": "frontend",
+      "label": "4. Make the referral",
+      "sublabel": "Choose details; review and send",
+      "tag": "Worker stays in control",
+      "width": 165,
+      "height": 92
+    },
+    {
+      "id": "follow_document",
+      "lane": "act_complete",
+      "col": 3,
+      "type": "frontend",
+      "label": "5. Follow up and document",
+      "sublabel": "Track outcomes; approve case note",
+      "tag": "Close when support starts",
+      "width": 180,
+      "height": 92
+    }
+  ],
+  "edges": [
+    {
+      "id": "context_to_find",
+      "from": "context",
+      "to": "find_support",
+      "label": "approved summary",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "id": "find_to_verify",
+      "from": "find_support",
+      "to": "verify",
+      "label": "shortlist",
+      "variant": "emphasis",
+      "role": "main"
+    },
+    {
+      "id": "verify_to_refer",
+      "from": "verify",
+      "to": "refer",
+      "variant": "emphasis",
+      "role": "main",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight"
+    },
+    {
+      "id": "refer_to_follow",
+      "from": "refer",
+      "to": "follow_document",
+      "label": "referral sent",
+      "variant": "emphasis",
+      "role": "main"
+    }
+  ]
+}

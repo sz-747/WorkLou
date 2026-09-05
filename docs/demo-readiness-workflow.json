@@ -1,0 +1,64 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "WorkLou: Demo Readiness and Complete Workflow",
+    "locale": "en",
+    "output": "docs/demo-readiness-workflow.html",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "alignment", "label": "Reconcile and repair" },
+    { "id": "casework", "label": "Five-step caseworker loop" },
+    { "id": "proof", "label": "Daily jobs, proof, and demo" }
+  ],
+  "phases": [
+    { "id": "align", "label": "Align", "fromCol": 0, "toCol": 1 },
+    { "id": "function", "label": "Make it work", "fromCol": 2, "toCol": 4, "variant": "emphasis" },
+    { "id": "prove", "label": "Prove it", "fromCol": 5, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": [
+    "notes",
+    "context",
+    "match",
+    "refer",
+    "document",
+    "evidence",
+    "demo_ready"
+  ],
+  "semanticChecks": {
+    "allowedRoots": ["reconcile", "daily_jobs"],
+    "allowedTerminals": ["demo_ready"],
+    "requiredPaths": [
+      { "from": "reconcile", "to": "demo_ready" },
+      { "from": "notes", "to": "document" },
+      { "from": "daily_jobs", "to": "demo_ready" }
+    ]
+  },
+  "nodes": [
+    { "id": "reconcile", "lane": "alignment", "col": 0, "type": "external", "label": "Reconcile", "sublabel": "Base44 + GitHub", "tag": "first" },
+    { "id": "backend_ready", "lane": "alignment", "col": 1, "type": "backend", "label": "Fix backend", "sublabel": "green tests" },
+
+    { "id": "notes", "lane": "casework", "col": 0, "type": "frontend", "label": "1. Notes", "sublabel": "fragmented mock input" },
+    { "id": "context", "lane": "casework", "col": 1, "type": "security", "label": "2. Context", "sublabel": "validate + approve" },
+    { "id": "match", "lane": "casework", "col": 2, "type": "database", "label": "3. Match", "sublabel": "Postgres rules", "tag": "fast path" },
+    { "id": "refer", "lane": "casework", "col": 3, "type": "backend", "label": "4. Refer", "sublabel": "draft + follow-up" },
+    { "id": "document", "lane": "casework", "col": 4, "type": "backend", "label": "5. Document", "sublabel": "outcome + case note" },
+
+    { "id": "daily_jobs", "lane": "proof", "col": 2, "type": "cloud", "label": "Daily jobs", "sublabel": "update + discover", "tag": "Base44" },
+
+    { "id": "evidence", "lane": "proof", "col": 4, "type": "security", "label": "Prove it", "sublabel": "speed + receipts", "tag": "gates" },
+    { "id": "demo_ready", "lane": "proof", "col": 5, "type": "external", "label": "Demo ready", "sublabel": "repeatable + evidenced" }
+  ],
+  "edges": [
+    { "from": "reconcile", "to": "backend_ready", "label": "diff + merge", "variant": "emphasis", "role": "branch" },
+    { "from": "backend_ready", "to": "notes", "label": "test loop", "role": "branch", "bias": 0.2 },
+    { "from": "notes", "to": "context", "variant": "emphasis", "role": "main" },
+    { "from": "context", "to": "match", "label": "approved facts", "variant": "emphasis", "role": "main" },
+    { "from": "match", "to": "refer", "label": "shortlist", "variant": "emphasis", "role": "main" },
+    { "from": "refer", "to": "document", "label": "outcome", "variant": "emphasis", "role": "main" },
+    { "from": "daily_jobs", "to": "evidence", "label": "receipts", "role": "async" },
+    { "from": "document", "to": "evidence", "label": "10/10 runs", "variant": "emphasis", "role": "main" },
+    { "from": "evidence", "to": "demo_ready", "label": "all green", "variant": "emphasis", "role": "main" }
+  ]
+}

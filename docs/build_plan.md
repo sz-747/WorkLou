@@ -19,7 +19,7 @@ One phase per workflow step. Each phase gets its own branch from latest `main`, 
 | 8 | Excel migration compatibility | Lou's existing service list (CSV from Excel) feeds the canonical schema without forced cutover: upload → staging (original values verbatim) → human per-row import/discard; non-destructive merge; canonical directory exports back to CSV | Upload stages rows with originals preserved and match status shown; matched rows only fill empty fields / add missing need facts (existing values never overwritten); new rows create services with excel provenance (needs flagged for provider confirmation); `GET /api/services/export` returns the canonical directory as CSV; decided rows never re-decided | COMPLETE |
 | 9 | Final demo hardening | Integration + reliability only, no new product features: full five-step flow re-run from fresh state with DB-write inspection at every stage, admin-correction → caseworker propagation, updater/discovery/Excel demo paths, synthetic-data/no-transmission/no-invented-facts audit, failure/empty-state review, dead-code removal, docs brought to a "new chat can understand" state | All paths verified live or by green suites; dead demo-only code removed; all four docs state what is complete, schema, workflow, limitations, demo steps, next steps | COMPLETE |
 
-**All phases are built and verified. Final user acceptance = the manual test checklist from the 2026-09-06 hardening session (in chat).** Regression suites: all 12 green (249 assertions) — run sequentially, see `AGENTS.md`.
+**All phases are built and verified. Final user acceptance = the manual test checklist from the 2026-09-06 hardening session (in chat).** Regression suites: all 12 green (273 assertions) — run sequentially, see `AGENTS.md`.
 
 ## Known limitations (hackathon build)
 
@@ -36,7 +36,7 @@ One phase per workflow step. Each phase gets its own branch from latest `main`, 
 
 1. **Auth + roles** (caseworker vs admin) before any real client-adjacent data.
 2. **Real service data migration**: run the Excel import on Lou's actual list; reconcile needs taxonomy (`docs/product.md` decision #3) with Lou's categories.
-3. **Updater on real sources**: re-add an unlocker/proxy fallback for provider sites that block direct fetch; schedule via the platform scheduler once published.
+3. **Updater on real sources**: keep blocked provider pages as logged source failures for the demo; schedule the existing updater and discovery processes via the platform scheduler once published.
 4. **UX pass** on the case workspace (stage navigation, mobile) and admin queues.
 5. **Outcome analytics**: referral outcomes accumulate — surface "which services actually deliver support" in Find support.
 6. **Case-list ergonomics**: multiple concurrent cases, search, and closed-case handling.

@@ -31,20 +31,20 @@ transmitted to a provider by the tool — drafts are for the worker to review an
 ### 2. Find support — deterministic matching
 1. Stage 2 "Find support" now lists suitable services with per-criterion evidence,
    source and freshness: **Watershed** (2 needs matched) and **Southside** (1),
-   with Watershed's *pets* fact shown as **needs provider confirmation** and its
-   cost/wait facts flagged stale. "Not suitable" services are listed with reasons.
+   with Watershed's synthetic *pets* fact shown as **negotiable / case-by-case**
+   and its cost/wait facts flagged stale. "Not suitable" services are listed with reasons.
    - *DB:* no changes — matching is a read-only deterministic SQL query (no LLM).
 
-### 3. Verify — provider-only unknowns
-1. Stage 3 "Verify": click **Watershed**. Known-from-machine facts are listed
-   (source + retrieved date); only genuinely provider-only unknowns need a human.
-2. In the *pets* form enter value **welcome**, confirmed by **Caseworker — phone**,
-   click **Save confirmation**.
-   - *DB:* the EXISTING `service_attributes` row is updated in place —
-     `value='welcome'`, `source_type='provider_confirmed'`, `confirmed_by`,
-     `confirmed_at`, `retrieved_at`. **No duplicate fact row is created**; the
-     confirmation is shared knowledge visible to every future case. Find support
-     immediately shows "pets: matched — Caseworker confirmed".
+### 3. Verify — current availability
+1. Stage 3 "Verify": click **Watershed**. The call list contains exactly two
+   reusable operational questions: **current wait time** and **current capacity**.
+   Pet policy, languages, visa rules, costs and other durable profile facts are
+   background online-data work and are not added to the caseworker's call.
+2. Save the provider's current answers, for example wait time **today** and
+   capacity **reported_available**, with the caseworker's name and date.
+   - *DB:* the wait-time row is updated in place and a missing capacity row is
+     inserted. Both use `source_type='provider_confirmed'`, record who/when, and
+     expire quickly so later cases reuse the answers without treating them as permanent.
    - Trying to generate a second referral while one is open is blocked (see step 4).
 
 ### 4. Refer — draft → worker review → mark sent
@@ -92,7 +92,7 @@ transmitted to a provider by the tool — drafts are for the worker to review an
 |---|---|
 | `cases` | 1 case (CASE-2026-001), original notes unchanged |
 | `case_contexts` | v1 approved, `field_sources` tags intact |
-| `service_attributes` | Watershed `pets` = welcome, provider_confirmed (Caseworker — phone) |
+| `service_attributes` | Watershed `pets` = negotiable (synthetic spreadsheet); wait time = 2-3 weeks, stale until Verify confirms it |
 | `referrals` | 1 referral: Watershed, closed, outcome support_received, sent 2026-09-05, follow-up due 2026-09-12 |
 | `referral_events` | 3: provider_response, follow_up_draft, outcome |
 | `case_documents` | 1 approved case note |
@@ -131,9 +131,8 @@ All on **Admin** (`/admin`). None of these touch the demo case's data.
    delete from referrals where case_id = '<case-id>';       -- cascades referral_events
    delete from case_contexts where case_id = '<case-id>';
    ```
-   (Optionally also reset the Watershed pets fact to the seeded unknown:
-   `update service_attributes set value='unknown', verification_status='needs_provider_confirmation',
-   source_type='excel_import', confirmed_by=null, confirmed_at=null where key='pets';`)
+   To make both reusable availability questions appear again without deleting history,
+   mark Watershed's wait-time and capacity facts stale before the walkthrough.
 2. Run the steps above in order. Expected row counts as you go: +1 context on
    extraction, +1 referral on draft, +1 event per response/follow-up-draft/outcome,
    +1 document on case-note draft.
