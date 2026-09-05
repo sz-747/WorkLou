@@ -56,7 +56,9 @@ export function factLabel(key: string): string {
 export function isKnownFact(fact: FactRow): boolean {
   return (
     fact.value !== "unknown" &&
-    (fact.verificationStatus === "verified_machine" || fact.verificationStatus === "provider_confirmed")
+    (fact.verificationStatus === "verified_machine" ||
+      fact.verificationStatus === "provider_confirmed" ||
+      fact.verificationStatus === "admin_corrected")
   );
 }
 

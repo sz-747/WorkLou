@@ -101,6 +101,21 @@ Matching (Phase 3) is plain SQL over typed rows: e.g. `attr_type='need' AND valu
 | status | text check | draft / approved |
 | created_at / approved_at | timestamptz | |
 
+### service_change_log — append-only change history (Phase 7 admin view)
+| column | type | notes |
+|---|---|---|
+| id | uuid pk | |
+| service_id | uuid fk → services (cascade) | |
+| attribute_id | uuid | the fact row concerned, when entity='attribute' (plain reference — the row itself is corrected in place) |
+| entity | text check | service / attribute |
+| field | text | which field changed (value, source_type, status, phone, …) |
+| old_value / new_value | text | prior → new; prior provenance is preserved here when a correction replaces it |
+| changed_by | text | who made the correction (no auth — entered on the form) |
+| note | text | |
+| created_at | timestamptz | |
+
+Admin corrections update the shared `services` / `service_attributes` rows in place (caseworker queries use the corrected data immediately) and append log rows — nothing is deleted. A corrected fact gets `verification_status='admin_corrected'` (added to the check; ranked with `provider_confirmed` in matching, counted as known in Verify).
+
 ### discovery_candidates — process B queue (Phase 7)
 | column | type | notes |
 |---|---|---|

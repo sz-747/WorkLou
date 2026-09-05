@@ -97,9 +97,38 @@ export const serviceAttributes = pgTable(
     ),
     check(
       "service_attributes_verification_status_check",
-      sql`${t.verificationStatus} in ('verified_machine','needs_provider_confirmation','stale','provider_confirmed')`,
+      sql`${t.verificationStatus} in ('verified_machine','needs_provider_confirmation','stale','provider_confirmed','admin_corrected')`,
     ),
     index("service_attributes_lookup_idx").on(t.serviceId, t.attrType, t.key),
+  ],
+);
+
+/**
+ * Append-only change history for service knowledge (Phase 7 admin view).
+ * Every admin correction of a service field or a structured fact writes a
+ * row here — nothing is ever deleted, so prior values and prior provenance
+ * remain inspectable after a fact row is corrected in place.
+ */
+export const serviceChangeLog = pgTable(
+  "service_change_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    serviceId: uuid("service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+    /** the fact row this change concerns, when entity='attribute' (plain reference — kept even after the row itself is corrected in place). */
+    attributeId: uuid("attribute_id"),
+    entity: text("entity").notNull(),
+    field: text("field").notNull(),
+    oldValue: text("old_value"),
+    newValue: text("new_value"),
+    changedBy: text("changed_by").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("service_change_log_entity_check", sql`${t.entity} in ('service','attribute')`),
+    index("service_change_log_service_idx").on(t.serviceId, t.createdAt),
   ],
 );
 

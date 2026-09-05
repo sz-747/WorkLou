@@ -65,6 +65,7 @@ export type MatchResult = {
 /** Deterministic freshness ordering for ranking (never shown as a "score"). */
 const FRESHNESS_RANK: Record<string, number> = {
   provider_confirmed: 3,
+  admin_corrected: 3,
   verified_machine: 2,
   stale: 1,
   needs_provider_confirmation: 0,

@@ -6,6 +6,7 @@ export function Nav() {
       <Link href="/">My Work</Link>
       <Link href="/women">Women</Link>
       <Link href="/data">Data check</Link>
+      <Link href="/admin">Admin</Link>
     </nav>
   );
 }
