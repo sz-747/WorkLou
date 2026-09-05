@@ -67,6 +67,32 @@
   color: var(--a2-ink);
   font-family: var(--a2-font);
 }
+
+/**
+ * A2 / Today ambient wash: cool blue-lavender at the top and edges, a broad
+ * warm peach band across the lower middle, lavender settling at the base.
+ * Viewport-anchored (fixed) and painted on both the canvas and the content box
+ * so it reads as one seamless field at any width. Caseworker pages only.
+ */
+html:has(main.a2),
+body:has(main.a2) {
+  background:
+    radial-gradient(75% 45% at 50% 68%, rgb(246 178 132 / 40%), transparent 72%),
+    radial-gradient(45% 30% at 88% 4%, rgb(191 227 245 / 55%), transparent 70%),
+    radial-gradient(40% 28% at 6% 8%, rgb(206 216 245 / 45%), transparent 72%),
+    radial-gradient(55% 30% at 32% 104%, rgb(199 186 246 / 30%), transparent 72%),
+    radial-gradient(50% 26% at 92% 92%, rgb(214 196 244 / 26%), transparent 72%),
+    #f7f7f6;
+  background-attachment: fixed;
+}
+/* Full-bleed canvas with centred content — the frame's inset page rhythm. */
+body:has(main.a2) {
+  max-width: none;
+  min-height: 100vh;
+  padding: 1.5rem clamp(1.5rem, 4vw, 3.5rem) 4rem;
+}
+.a2-nav,
+main.a2 { margin-inline: auto; max-width: 68rem; }
 .a2 h1 {
   font-size: 2.5rem;
   font-weight: 600;
@@ -85,14 +111,38 @@
   margin: 0.5rem 0 0;
 }
 
+/* ── A2 / Today two-column rhythm: wide work list + narrower side rail ── */
+.a2-columns {
+  align-items: start;
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+}
+@media (max-width: 900px) {
+  .a2-columns { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ── Cards + layout rhythm ────────────────────────────────────────── */
 .a2-card {
-  background: var(--a2-surface);
-  border: 1px solid var(--a2-hairline);
+  backdrop-filter: blur(12px);
+  background: rgb(255 255 255 / 62%);
+  border: 1px solid rgb(255 255 255 / 70%);
   border-radius: var(--a2-r-xl);
   box-shadow: var(--a2-shadow-1);
   margin: 0 0 1.25rem;
   padding: 1.5rem;
+}
+/* In-card footer link — the frame's "All shelters" / "All letters" pattern. */
+.a2-card-foot {
+  border-top: 1px solid var(--a2-divider);
+  margin: 0.75rem 0 0;
+  padding-top: 0.875rem;
+}
+.a2-card-foot a {
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .a2-card > h2,
 .a2-card > h3 { margin-bottom: 1rem; }
@@ -139,8 +189,9 @@
 
 /* ── Tables (A2 card table) ───────────────────────────────────────── */
 .a2-table-card {
-  background: var(--a2-surface);
-  border: 1px solid var(--a2-hairline);
+  backdrop-filter: blur(12px);
+  background: rgb(255 255 255 / 62%);
+  border: 1px solid rgb(255 255 255 / 70%);
   border-radius: var(--a2-r-xl);
   box-shadow: var(--a2-shadow-1);
   overflow: hidden;

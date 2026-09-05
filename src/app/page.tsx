@@ -20,6 +20,7 @@ export default async function MyWork() {
         </p>
       </header>
 
+      <div className="a2-columns">
       <section className="a2-card">
         <h2>Follow-ups due</h2>
         <ul className="a2-rows">
@@ -56,11 +57,11 @@ export default async function MyWork() {
           ))}
           {myCases.length === 0 && <li className="a2-row-empty">No cases yet.</li>}
         </ul>
+        <p className="a2-card-foot">
+          <Link href="/women">All women →</Link>
+        </p>
       </section>
-
-      <p className="a2-foot">
-        <Link href="/women">All women →</Link>
-      </p>
+      </div>
     </main>
   );
 }
