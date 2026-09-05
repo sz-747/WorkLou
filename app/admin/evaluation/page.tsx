@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface ScenarioResult {
   scenarioId: string;
@@ -49,6 +49,12 @@ export default function EvaluationPage() {
   const [verifEval, setVerifEval] = useState<VerificationEval | null>(null);
   const [running, setRunning] = useState<'search' | 'verification' | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Background runs (scheduler) persist results; show the latest ones without running anything.
+  useEffect(() => {
+    fetch('/api/eval/search').then((r) => (r.ok ? r.json() : null)).then(setSearchEval).catch(() => {});
+    fetch('/api/eval/verification').then((r) => (r.ok ? r.json() : null)).then(setVerifEval).catch(() => {});
+  }, []);
 
   async function run(kind: 'search' | 'verification') {
     setRunning(kind);

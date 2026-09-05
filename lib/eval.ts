@@ -75,6 +75,17 @@ export interface SearchEvalResult {
   ranAt: string;
 }
 
+export type EvalKind = 'search' | 'verification';
+
+export async function saveEvalResult(kind: EvalKind, result: unknown): Promise<void> {
+  await pool.query(`INSERT INTO eval_results (kind, result) VALUES ($1, $2)`, [kind, JSON.stringify(result)]);
+}
+
+export async function latestEvalResult(kind: EvalKind): Promise<unknown | null> {
+  const r = await pool.query(`SELECT result FROM eval_results WHERE kind = $1 ORDER BY id DESC LIMIT 1`, [kind]);
+  return r.rows[0]?.result ?? null;
+}
+
 export async function runSearchEval(): Promise<SearchEvalResult> {
   const services = (await pool.query<ServiceRow>(`SELECT * FROM services ORDER BY id`)).rows;
   const byName = new Map(services.map((s) => [s.name, s]));
@@ -114,7 +125,7 @@ export async function runSearchEval(): Promise<SearchEvalResult> {
   const sorted = timings.map((t) => t.selected_after_ms).sort((a, b) => a - b);
   const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : null;
 
-  return {
+  const result: SearchEvalResult = {
     scenarios: results,
     overall: {
       validReferralRate: totalReturned ? totalValidReturned / totalReturned : 0,
@@ -132,6 +143,8 @@ export async function runSearchEval(): Promise<SearchEvalResult> {
     },
     ranAt: new Date().toISOString(),
   };
+  await saveEvalResult('search', result);
+  return result;
 }
 
 // ---- Verification evaluation ----
@@ -246,7 +259,7 @@ export async function runVerificationEval(): Promise<VerificationEvalResult> {
   const detected = details.filter((d) => d.detected).length;
   const extractedCorrect = details.filter((d) => d.extractedCorrectly).length;
   const n = details.length;
-  return {
+  const result: VerificationEvalResult = {
     plantedChanges: n,
     detectedChanges: detected,
     changeDetectionRecall: n ? detected / n : 0,
@@ -257,6 +270,8 @@ export async function runVerificationEval(): Promise<VerificationEvalResult> {
     details,
     ranAt: new Date().toISOString(),
   };
+  await saveEvalResult('verification', result);
+  return result;
 }
 
 export const VERIFICATION_FIELDS = VERIFIED_FIELDS;

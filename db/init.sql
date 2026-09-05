@@ -71,6 +71,13 @@ CREATE TABLE referral_searches (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS eval_results (
+  id SERIAL PRIMARY KEY,
+  kind TEXT NOT NULL,
+  result JSONB NOT NULL,
+  ran_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE import_runs (
   id serial PRIMARY KEY,
   filename text,

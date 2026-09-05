@@ -34,7 +34,7 @@ services:
         condition: service_healthy
   scheduler:
     image: alpine:3.20
-    command: sh -c "sleep 60 && while true; do wget -qO- --post-data='trigger=scheduled' http://web:3000/api/verification/run || true; sleep 21600; done"
+    command: sh -c "sleep 60 && while true; do wget -qO- --post-data='trigger=scheduled' http://web:3000/api/verification/run || true; wget -qO- --post-data='' http://web:3000/api/eval/search || true; wget -qO- --post-data='' http://web:3000/api/eval/verification || true; sleep 21600; done"
     depends_on:
       - web
 volumes:
