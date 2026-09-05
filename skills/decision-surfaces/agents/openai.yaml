@@ -1,0 +1,4 @@
+interface:
+  display_name: "Decision Surfaces"
+  short_description: "Expose hidden choices before agents build"
+  default_prompt: "Use $decision-surfaces to expose the hidden choices this project must define before planning."
