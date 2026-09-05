@@ -460,8 +460,12 @@ export async function discardStagedRow(stagedId: string, decidedBy: string): Pro
     .update(stagedServices)
     .set({ status: "discarded", decidedBy, decidedAt: new Date() })
     .where(
-      // staged-only guard: decided rows are never re-decided
-      inArray(stagedServices.status, ["staged"]),
+      and(
+        // exactly this row — never other batches' staged rows
+        eq(stagedServices.id, stagedId),
+        // staged-only guard: decided rows are never re-decided
+        inArray(stagedServices.status, ["staged"]),
+      ),
     )
     .returning({ id: stagedServices.id });
   return result.length > 0;

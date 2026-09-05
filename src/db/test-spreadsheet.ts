@@ -207,6 +207,31 @@ async function main() {
   const [afterDiscard] = await db.select().from(services).where(eq(services.id, discardTarget.id));
   assert("discarded row leaves canonical data untouched", afterDiscard.phone === "02 0000 9999");
 
+  // --- discard is per-row: one discard never discards other staged rows ---
+  const multiCsv =
+    "Service name,Phone\r\n" +
+    "Multi Discard First,02 1111 1111\r\n" +
+    "Multi Discard Second,02 2222 2222\r\n";
+  const multiBatch = await importSpreadsheetText({
+    text: multiCsv,
+    filename: "TEST-multi-discard.csv",
+    importedBy: "Test Runner",
+  });
+  const multiRows = (await db
+    .select()
+    .from(stagedServices)
+    .where(eq(stagedServices.importId, multiBatch.importId))
+  ).sort((a, b) => a.rowNumber - b.rowNumber);
+  const firstDiscarded = (await discardStagedRow(multiRows[0].id, "Test Runner")) === true;
+  const [secondAfter] = await db
+    .select()
+    .from(stagedServices)
+    .where(eq(stagedServices.id, multiRows[1].id));
+  assert(
+    "discard is per-row: only the target row discarded, others stay staged",
+    firstDiscarded && multiRows.length === 2 && secondAfter.status === "staged",
+  );
+
   // --- export reflects current canonical data ---
   const exported = await exportServicesCsv();
   const exportLines = exported.split("\r\n");
@@ -228,7 +253,7 @@ async function main() {
   }
   await db
     .delete(spreadsheetImports)
-    .where(inArray(spreadsheetImports.id, [batch.importId, discardBatch.importId]));
+    .where(inArray(spreadsheetImports.id, [batch.importId, discardBatch.importId, multiBatch.importId]));
   await db
     .delete(services)
     .where(inArray(services.id, [existing.id, created.id, discardTarget.id]));
@@ -237,7 +262,7 @@ async function main() {
     .select({ id: stagedServices.id })
     .from(stagedServices)
     .where(
-      inArray(stagedServices.importId, [batch.importId, discardBatch.importId]),
+      inArray(stagedServices.importId, [batch.importId, discardBatch.importId, multiBatch.importId]),
     );
   const [createdGone] = await db
     .select({ id: services.id })
