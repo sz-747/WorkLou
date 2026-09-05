@@ -8,7 +8,9 @@ const nextConfig: NextConfig = {
     // Dev-only Server Actions origin guard: the preview proxy serves the app
     // on an external origin whose host differs from the sandbox host in
     // x-forwarded-host; without this Next aborts action POSTs as cross-origin.
-    allowedOrigins: ["*.base44-preview.app", "*.imported.base44-preview.app"],
+    serverActions: {
+      allowedOrigins: ["*.base44-preview.app", "*.imported.base44-preview.app"],
+    },
   },
 };
 

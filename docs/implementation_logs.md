@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-05 — Phase 2 fix: Server Actions origin guard (correct config path) + full browser verification
+
+- Branch: `setup-branching-rules`
+- Changes: the earlier origin fix was in the wrong config location — `experimental.allowedOrigins` is ignored by the action CSRF check; the correct path is `experimental.serverActions.allowedOrigins` (read from `node_modules/next/dist/server/app-render/action-handler.js` + `csrf-protection.js`: single `*` matches exactly one subdomain label, so both `*.base44-preview.app` and `*.imported.base44-preview.app` are listed)
+- DB changes: none
+- Tests run: full live-preview walkthrough — rough notes entered → "Extract draft context" → **Draft v2 — not approved (extracted by google/gemini-2.5-flash)** rendered editable (Ashfield / housing_accommodation / 1 child / high / email / student visa all correctly extracted); worker edited suburb and saved (persisted); clicked Approve; hard reload shows **Context v2 approved** with timestamp; Postgres shows v2 approved with the edited value and the seeded v1 draft untouched; 0 console errors; `db:test` and `db:test:context` suites remain green (21/21, 24/24)
+- Result: pass — all Phase 2 acceptance criteria verified in the browser and DB
+- Known issues: none outstanding for Phase 2
+- Next phase: awaiting user manual test of Phase 2; then Phase 3 — Find support
+
 ## 2026-09-05 — Phase 2: Context (notes → draft → review → approve)
 
 - Branch: `setup-branching-rules`
