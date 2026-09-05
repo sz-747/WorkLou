@@ -1,22 +1,38 @@
-# Implementation Logs
+# Implementation Logs — Lou's Place Casework Workflow Tool
 
-What has been built, when, and how it was verified. Append newest entries at the top.
+Append-only. New entries at the TOP (below this header block). Never edit or delete past entries.
 
 ## Entry format
 
 ```
 ## YYYY-MM-DD — Phase N: <name>
 - Branch: <branch name>
-- Built: <what changed>
-- Tested: <how it was verified (automated + manual steps given)>
-- Docs updated: product.md / build_plan.md / implementation_plan.md (as applicable)
+- Changes: <what changed>
+- DB changes: <migrations / seed changes / none>
+- Tests run: <what was tested and how>
+- Result: <pass / pass with notes / fail>
+- Known issues: <anything outstanding>
+- Next phase: <what comes next>
 ```
 
 ---
 
+## 2026-09-05 — Phase 0: Project memory
+
+- Branch: `setup-branching-rules`
+- Changes: Wrote project memory docs: product definition, phased build plan (phases 1–7, one per workflow step), implementation plan with proposed Postgres schema and data flow, and this log format.
+- DB changes: none
+- Tests run: verified all four docs render as valid Markdown; schema tables cross-checked against the five-step workflow and the two long-term service-data processes
+- Result: pass with notes — schema, phase list, and open decisions presented to the user for review before any implementation
+- Known issues: none
+- Next phase: Phase 1 — Foundation (Next.js + Postgres + schema + synthetic seed) — awaiting user decisions on ORM, sources, needs taxonomy, context fields, and auth scope
+
 ## 2026-09-05 — Phase 0: Docs scaffolding
 
 - Branch: `setup-branching-rules`
-- Built: Created `docs/` structure (product.md, build_plan.md, implementation_plan.md, implementation_logs.md) and `AGENTS.md` with the branch/session rules.
-- Tested: Verified all five files exist and render as valid Markdown.
-- Docs updated: this file, plus the initial templates.
+- Changes: Created `docs/` structure (product.md, build_plan.md, implementation_plan.md, implementation_logs.md) and `AGENTS.md` with the branch/session rules.
+- DB changes: none
+- Tests run: verified all five files exist and render as valid Markdown
+- Result: pass
+- Known issues: none
+- Next phase: fill docs with real project content
