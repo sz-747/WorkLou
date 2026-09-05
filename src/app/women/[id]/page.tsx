@@ -11,9 +11,11 @@ import { ContextStage } from "./ContextStage";
 import { FindSupportStage } from "./FindSupportStage";
 import { ReferStage } from "./ReferStage";
 import { VerifyStage } from "./VerifyStage";
+import { FollowUpStage } from "./FollowUpStage";
 import { getLatestApprovedContext, getMatchCandidates, matchServices } from "../../../lib/matching";
 import { getServiceForVerify } from "../../../lib/verify";
 import { getReferralsForCase } from "../../../lib/refer";
+import { getReferralEventsForCase } from "../../../lib/followup";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +32,11 @@ export default async function CaseWorkspace({
     verify?: string;
     verifyError?: string;
     referError?: string;
+    followUpError?: string;
   }>;
 }) {
   const { id } = await params;
-  const { extractError, verify, verifyError, referError } = await searchParams;
+  const { extractError, verify, verifyError, referError, followUpError } = await searchParams;
 
   const [caseRow] = await db.select().from(cases).where(eq(cases.id, id));
   if (!caseRow) notFound();
@@ -46,6 +49,7 @@ export default async function CaseWorkspace({
     .limit(1);
 
   const referralRows = await getReferralsForCase(id);
+  const referralEvents = await getReferralEventsForCase(id);
 
   const docCount = (await db.select().from(caseDocuments).where(eq(caseDocuments.caseId, id))).length;
 
@@ -58,14 +62,7 @@ export default async function CaseWorkspace({
   const verifyServiceId = verify && suitable.some((r) => r.service.id === verify) ? verify : null;
   const selectedService = verifyServiceId ? await getServiceForVerify(verifyServiceId) : null;
 
-  const stages = [
-    {
-      n: 5,
-      name: "Follow up + document",
-      state: `${referralRows.filter((r) => r.outcome).length} outcome(s) recorded, ${docCount} document draft(s).`,
-      placeholder: "Track outcomes; draft case documentation for review. (Phase 6)",
-    },
-  ];
+  const docStageState = `${referralRows.filter((r) => r.outcome).length} outcome(s) recorded, ${docCount} document draft(s).`;
 
   return (
     <main>
@@ -110,15 +107,23 @@ export default async function CaseWorkspace({
           referError={referError}
         />
       </section>
-      {stages.map((s) => (
-        <section key={s.n} style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
-          <h3 style={{ margin: "0.25rem 0" }}>
-            {s.n}. {s.name}
-          </h3>
-          <p style={{ margin: "0.25rem 0", fontSize: "0.85rem" }}>{s.state}</p>
-          <p style={{ margin: 0, fontSize: "0.75rem", color: "#888" }}>{s.placeholder}</p>
-        </section>
-      ))}
+      <section style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
+        <h3 style={{ margin: "0.25rem 0" }}>5. Follow up</h3>
+        <p style={{ margin: "0.25rem 0", fontSize: "0.85rem" }}>{docStageState}</p>
+        <FollowUpStage
+          caseId={id}
+          referrals={referralRows}
+          events={referralEvents}
+          followUpError={followUpError}
+        />
+      </section>
+      <section style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
+        <h3 style={{ margin: "0.25rem 0" }}>6. Document</h3>
+        <p style={{ margin: 0, fontSize: "0.75rem", color: "#888" }}>
+          Draft case documentation from original notes + referral activity for review. (Phase 6,
+          step 5B — not started)
+        </p>
+      </section>
 
       <p>
         <Link href="/women">← All women</Link>

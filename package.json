@@ -11,6 +11,7 @@
     "db:test:matching": "tsx src/db/test-matching.ts",
     "db:test:verify": "tsx src/db/test-verify.ts",
     "db:test:refer": "tsx src/db/test-refer.ts",
+    "db:test:followup": "tsx src/db/test-followup.ts",
     "db:backfill-sources": "tsx src/db/backfill-field-sources.ts"
   },
   "dependencies": {

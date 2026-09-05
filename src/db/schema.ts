@@ -161,9 +161,35 @@ export const referrals = pgTable(
     ),
     check(
       "referrals_outcome_check",
-      sql`${t.outcome} is null or ${t.outcome} in ('accepted','declined','no_response','other')`,
+      sql`${t.outcome} is null or ${t.outcome} in ('awaiting_reply','accepted','declined','referred_elsewhere','support_received','other')`,
     ),
     index("referrals_case_idx").on(t.caseId),
+  ],
+);
+
+/**
+ * Follow-up timeline events (Phase 6, step 5A). Append-only history per
+ * referral: provider responses, outcomes, and follow-up drafts the worker
+ * requested for review. Nothing here is ever transmitted.
+ */
+export const referralEvents = pgTable(
+  "referral_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    referralId: uuid("referral_id")
+      .notNull()
+      .references(() => referrals.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    note: text("note").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check(
+      "referral_events_kind_check",
+      sql`${t.kind} in ('provider_response','outcome','follow_up_draft')`,
+    ),
+    index("referral_events_referral_idx").on(t.referralId, t.occurredAt),
   ],
 );
 

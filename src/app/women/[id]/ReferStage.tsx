@@ -25,6 +25,7 @@ export type ReferralRow = {
   followUpDue: string | null;
   sharedFields: string[] | null;
   outcome: string | null;
+  outcomeAt: Date | string | null;
   createdAt: Date | string;
 };
 

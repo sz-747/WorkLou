@@ -80,8 +80,17 @@ Matching (Phase 3) is plain SQL over typed rows: e.g. `attr_type='need' AND valu
 | status | text check | draft / approved / sent / responded / closed |
 | sent_at | timestamptz | worker marks sent — never automatic |
 | follow_up_due | date | |
-| outcome | text | accepted / declined / no_response / other |
+| outcome | text check | awaiting_reply / accepted / declined / referred_elsewhere / support_received / other — support_received means support was actually delivered, distinct from merely sent/accepted (Phase 6) |
 | outcome_notes | text / timestamptz | response/outcome recorded in step 5 |
+
+### referral_events — follow-up timeline (Phase 6, step 5A)
+| column | type | notes |
+|---|---|---|
+| id | uuid pk | |
+| referral_id | uuid fk → referrals | cascade |
+| kind | text check | provider_response / outcome / follow_up_draft |
+| note | text | what the provider said / the outcome / the draft text for worker review |
+| occurred_at / created_at | timestamptz | append-only history; nothing is ever transmitted |
 
 ### case_documents
 | column | type | notes |
