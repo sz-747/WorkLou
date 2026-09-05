@@ -269,3 +269,20 @@ Manual test steps (Phase 8):
 - Result: pass
 - Known issues: none
 - Next phase: n/a
+
+## 2026-09-06 — Wired the A2 UI to the real casework data
+
+- Why: the A2 design screens rendered entirely from `src/lib/a2-mock.ts` with no database access. Every surface that has verifiable backend logic and data behind it is now driven by the real tables; surfaces with no backend yet (assistant runs, plans, shelter bed capacity) stay demo content and say so.
+- Branch: `backend-skeleton-setup`
+- Changes:
+  - New view-model layer `src/lib/a2/`: `format.ts` (Sydney-timezone day/time/due labels, overdue maths, initials), `clients.ts` (client list rows + client profile), `follow-ups.ts` (due rows + waiting-on-a-service rows), `letters.ts` (case documents), `shelters.ts` (services directory with fact provenance), `today.ts` (roll-up). All read-only; they reuse the existing helpers (`getDueFollowUps`, `getReferralsForCase`, `getCaseDocuments`, `getReferralEventsForCase`, `outcomeLabel`, `factLabel`) rather than reimplementing logic.
+  - Pages converted to async server components with `export const dynamic = "force-dynamic"`: `/today`, `/clients`, `/follow-ups`, `/letters`, `/shelters`.
+  - `/clients/maya` (static mock profile) replaced by `/clients/[id]`, keyed on `cases.id`; the client list links to it. Profile chips/summary come from the latest context (approved preferred over a newer draft), files/timeline from note revisions, documents and referrals.
+  - `/shelters`: the design's "Beds (how, when)" and "For Maya" columns are replaced by "Contact" and "Last checked" — bed capacity and per-client eligibility have no backing data. Filters are the real distinct `need` facts. The "Call list" rail was dropped (no data); "Last checked" is real attribute freshness.
+  - New `src/components/a2/Empty.tsx` for in-sheet empty states.
+  - Still mock, intentionally: `AskBar`, `ShelterAsk`, `Spotlight`, alerts, identity, the Today "running task" and "Shelter beds today" rail, `/plans`, `/working`, `/done`, `/states`.
+- DB changes: none (read-only wiring)
+- Tests run: `npx tsc --noEmit` in the web container (clean apart from stale `.next` types for the deleted route); HTTP 200 + real content checked on `/today`, `/clients`, `/clients/<id>`, `/follow-ups`, `/letters`, `/shelters`; live preview click-through from the client row to the profile verified (row `CASE-2026-001` → `/clients/b7a3d13e…`, real chips and sheets rendered, no console or network errors).
+- Result: pass
+- Known issues: the database currently holds one case, one draft context and five services with no referrals or documents, so `/follow-ups` and `/letters` correctly render empty states. Seeding referrals/documents would exercise those rows.
+- Next phase: n/a
