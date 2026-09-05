@@ -185,6 +185,7 @@ export async function getReferralsForCase(caseId: string) {
       sharedFields: referrals.sharedFields,
       outcome: referrals.outcome,
       outcomeAt: referrals.outcomeAt,
+      outcomeNotes: referrals.outcomeNotes,
       createdAt: referrals.createdAt,
     })
     .from(referrals)

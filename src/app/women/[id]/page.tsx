@@ -2,11 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { db } from "../../../db";
-import {
-  caseContexts,
-  caseDocuments,
-  cases,
-} from "../../../db/schema";
+import { caseContexts, cases } from "../../../db/schema";
 import { ContextStage } from "./ContextStage";
 import { FindSupportStage } from "./FindSupportStage";
 import { ReferStage } from "./ReferStage";
@@ -16,6 +12,8 @@ import { getLatestApprovedContext, getMatchCandidates, matchServices } from "../
 import { getServiceForVerify } from "../../../lib/verify";
 import { getReferralsForCase } from "../../../lib/refer";
 import { getReferralEventsForCase } from "../../../lib/followup";
+import { getCaseDocuments } from "../../../lib/document";
+import { DocumentStage } from "./DocumentStage";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +31,12 @@ export default async function CaseWorkspace({
     verifyError?: string;
     referError?: string;
     followUpError?: string;
+    documentError?: string;
   }>;
 }) {
   const { id } = await params;
-  const { extractError, verify, verifyError, referError, followUpError } = await searchParams;
+  const { extractError, verify, verifyError, referError, followUpError, documentError } =
+    await searchParams;
 
   const [caseRow] = await db.select().from(cases).where(eq(cases.id, id));
   if (!caseRow) notFound();
@@ -51,7 +51,8 @@ export default async function CaseWorkspace({
   const referralRows = await getReferralsForCase(id);
   const referralEvents = await getReferralEventsForCase(id);
 
-  const docCount = (await db.select().from(caseDocuments).where(eq(caseDocuments.caseId, id))).length;
+  const documents = await getCaseDocuments(id);
+  const docCount = documents.filter((d) => d.status === "draft").length;
 
   const approvedContext = await getLatestApprovedContext(id);
   const matchResults = approvedContext
@@ -119,10 +120,12 @@ export default async function CaseWorkspace({
       </section>
       <section style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
         <h3 style={{ margin: "0.25rem 0" }}>6. Document</h3>
-        <p style={{ margin: 0, fontSize: "0.75rem", color: "#888" }}>
-          Draft case documentation from original notes + referral activity for review. (Phase 6,
-          step 5B — not started)
-        </p>
+        <DocumentStage
+          caseId={id}
+          originalNotes={caseRow.originalNotes}
+          documents={documents}
+          documentError={documentError}
+        />
       </section>
 
       <p>

@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-05 — Phase 6 step 5B: Documentation (case note drafting, review, approval)
+
+- Branch: `project-status-overview`
+- Changes: `src/lib/document.ts` (`getCaseDocuments` newest first; `getProviderConfirmationsForCase` — provider-confirmed service_attributes for the case's referred services only, with who/when; pure `buildCaseNoteInput` — stored data only: original notes verbatim, appointment date, approved context split into woman-stated vs worker-observed via stored field tags, referrals (service, status, sent date, outcome + outcome notes, follow-up due, sent text), provider confirmations, follow-up activity = provider responses + outcomes only (follow-up drafts excluded); `draftCaseNoteText` LLM instructed to use ONLY provided data with exact sections Woman said / Current concerns / Actions taken / Referrals / Worker observations / Next steps, woman's own words never containing caseworker observations; `insertDocumentDraft` / `saveDocumentDraftText` (draft-only guard) / `approveDocument` (draft-only guard, stamps approved_at); approved notes are read-only, never edited or re-approved); `src/app/women/[id]/document-actions.ts` (server actions draftDocument / saveDocumentDraft / approveDocumentAction, errors via `documentError` param, nothing persisted on failure); `DocumentStage.tsx` replaces the stage-6 stub: draft button, original appointment notes shown unchanged beside every draft, editable draft textarea + save, approve-as-final, approved notes read-only, multiple documents listed newest first; `page.tsx` stage 6 wired; `getReferralsForCase` extended with `outcome_notes`
+- DB changes: none (case_documents table existed since Phase 1; no migrations, no seed changes)
+- Tests run: new `npm run db:test:document` — 21/21 passed (pure: original notes verbatim, woman-stated vs worker-observed split via stored tags, referrals carry only stored data incl. outcome + notes, confirmations with who/when, follow-up drafts excluded from activity, null context tolerated; DB flow: draft persisted, empty text rejected, worker edits persist, approval stamps status+approved_at, guards reject edits/re-approval on approved + unknown ids, multiple documents newest first, original notes unchanged by all operations, case delete cascades documents); regressions `db:test:refer` 19/19, `db:test:followup` 19/19; live preview verified: "Draft case note" produced an LLM note with all six sections referencing only stored data (woman's own words from original notes, Watershed referral, provider response, outcome); real edit + save round-tripped to DB; approve-as-final made the note read-only approved; full page reopen confirmed approved note + original notes persist; 0 console errors
+- Result: pass
+- Known issues: the demo case now has one approved case note (ending with a worker-edit verification marker) — the demo's documentation data; drafting a new note any time remains possible
+- Next phase: Phase 7 service-data processes NOT started
+
 ## 2026-09-05 — Phase 6 step 5A: Follow up (responses, outcomes, timeline, due follow-ups)
 
 - Branch: `project-status-overview`
