@@ -47,5 +47,20 @@ services:
         condition: service_completed_successfully
     command: sh -c "npx next dev -p 3000 -H 0.0.0.0"
 
+  # Phase 7A: recurring existing-service updater. Hits the same idempotent
+  # endpoint the Admin "Run updater now" button uses. (Base44's scheduler
+  # can target this same URL when the app is published; this sidecar keeps
+  # the recurrence working in the dev environment.)
+  updater-cron:
+    image: alpine:3.20
+    depends_on:
+      - web
+    command: >
+      sh -c "sleep 180;
+      while true; do
+        wget -q -O /dev/null --post-data='' 'http://web:3000/api/updater/run?trigger=scheduled' || true;
+        sleep 3600;
+      done"
+
 volumes:
   pgdata:

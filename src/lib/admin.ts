@@ -108,7 +108,8 @@ export async function getDiscoveryCandidates() {
   return db.select().from(discoveryCandidates).orderBy(desc(discoveryCandidates.createdAt));
 }
 
-async function logChange(entry: {
+/** Shared append-only change-log writer (admin corrections + updater applies). */
+export async function logServiceChange(entry: {
   serviceId: string;
   attributeId: string | null;
   entity: "service" | "attribute";
@@ -155,7 +156,7 @@ export async function updateServiceAdmin(input: {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(services.id, input.serviceId));
     for (const c of changes) {
-      await logChange({
+      await logServiceChange({
         serviceId: input.serviceId,
         attributeId: null,
         entity: "service",
@@ -211,7 +212,7 @@ export async function correctServiceAttribute(input: {
 
   await db.update(serviceAttributes).set(updates).where(eq(serviceAttributes.id, input.attrId));
   for (const r of logRows) {
-    await logChange({
+    await logServiceChange({
       serviceId: current.serviceId,
       attributeId: current.id,
       entity: "attribute",

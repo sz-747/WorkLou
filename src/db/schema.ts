@@ -132,6 +132,88 @@ export const serviceChangeLog = pgTable(
   ],
 );
 
+/**
+ * Phase 7A — existing-service updater run log. One row per scheduled or
+ * manual run, with counts and a structured log (source fetches ok/failed,
+ * candidates created/deduped, freshness refreshes). Failures here never
+ * touch canonical service data.
+ */
+export const updaterRuns = pgTable(
+  "updater_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    trigger: text("trigger").notNull(),
+    status: text("status").notNull().default("running"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    servicesChecked: integer("services_checked").notNull().default(0),
+    sourcesOk: integer("sources_ok").notNull().default(0),
+    sourcesFailed: integer("sources_failed").notNull().default(0),
+    candidatesCreated: integer("candidates_created").notNull().default(0),
+    candidatesUpdated: integer("candidates_updated").notNull().default(0),
+    candidatesSkipped: integer("candidates_skipped").notNull().default(0),
+    refreshed: integer("refreshed").notNull().default(0),
+    error: text("error"),
+    log: jsonb("log").$type<{ at: string; message: string }[]>(),
+  },
+  (t) => [
+    check("updater_runs_trigger_check", sql`${t.trigger} in ('manual','scheduled')`),
+    check("updater_runs_status_check", sql`${t.status} in ('running','completed','failed')`),
+  ],
+);
+
+/**
+ * Phase 7A — structured update candidates. A proposed change to canonical
+ * service data, with full provenance (source URL, evidence type, retrieval
+ * time). Nothing is auto-applied (build plan: "nothing auto-applied without
+ * review"): admin approval applies it (canonical rows updated in place +
+ * change log), rejection leaves canonical data untouched. At most one
+ * pending candidate per service+scope+key (idempotent re-runs update it in
+ * place with the latest evidence rather than duplicating).
+ */
+export const updateCandidates = pgTable(
+  "update_candidates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => updaterRuns.id, { onDelete: "cascade" }),
+    serviceId: uuid("service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+    /** current fact row this change concerns, when scope='attribute' (null = new fact). */
+    attributeId: uuid("attribute_id"),
+    scope: text("scope").notNull(),
+    attrType: text("attr_type"),
+    key: text("key").notNull(),
+    currentValue: text("current_value"),
+    newValue: text("new_value").notNull(),
+    sourceType: text("source_type").notNull().default("machine"),
+    sourceName: text("source_name"),
+    sourceUrl: text("source_url"),
+    evidenceType: text("evidence_type").notNull(),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }),
+    status: text("status").notNull().default("pending_review"),
+    reason: text("reason"),
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("update_candidates_scope_check", sql`${t.scope} in ('service_field','attribute')`),
+    check(
+      "update_candidates_evidence_type_check",
+      sql`${t.evidenceType} in ('fixture','direct_fetch','bright_data')`,
+    ),
+    check(
+      "update_candidates_status_check",
+      sql`${t.status} in ('pending_review','applied','rejected')`,
+    ),
+    index("update_candidates_pending_idx").on(t.serviceId, t.scope, t.key, t.status),
+  ],
+);
+
 export const cases = pgTable("cases", {
   id: uuid("id").defaultRandom().primaryKey(),
   clientRef: text("client_ref").notNull(),

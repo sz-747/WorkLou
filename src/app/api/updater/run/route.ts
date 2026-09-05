@@ -1,0 +1,17 @@
+/**
+ * Phase 7A — updater HTTP entry point. POSTing this route runs the
+ * existing-service updater once; used by the compose cron sidecar for the
+ * recurring schedule and by the Admin "Run updater now" button path is the
+ * same underlying function. Idempotent: repeated runs create no duplicate
+ * candidates.
+ */
+import { runUpdater } from "../../../../lib/updater";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(request: Request) {
+  const url = new URL(request.url);
+  const trigger = url.searchParams.get("trigger") === "scheduled" ? "scheduled" : "manual";
+  const summary = await runUpdater({ trigger });
+  return Response.json(summary);
+}
