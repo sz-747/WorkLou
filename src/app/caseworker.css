@@ -12,7 +12,7 @@
   --a2-muted: #6b7480;
   --a2-accent: #c2410c;
   --a2-success: #2fa36b;
-  --a2-divider: rgb(191 227 245 / 40%);
+  --a2-divider: rgb(11 15 20 / 6%);
   --a2-hairline: rgb(11 15 20 / 6%);
   --a2-surface: rgb(255 255 255 / 60%);
   --a2-surface-strong: #ffffff;
@@ -69,20 +69,17 @@
 }
 
 /**
- * A2 / Today ambient wash: cool blue-lavender at the top and edges, a broad
- * warm peach band across the lower middle, lavender settling at the base.
- * Viewport-anchored (fixed) and painted on both the canvas and the content box
- * so it reads as one seamless field at any width. Caseworker pages only.
+ * A2 / Today canvas — read from Figma node 136:139.
+ * Frame fill is a vertical linear gradient #FFFFFF → #EAF1FB (55%) → #F4EEF7,
+ * with two heavily blurred bands over it: warm #FFD9C2 @80% (y500, h240) and
+ * cool #CFEBF3 @70% (y640, h160), both LAYER_BLUR 90.
  */
 html:has(main.a2),
 body:has(main.a2) {
   background:
-    radial-gradient(75% 45% at 50% 68%, rgb(246 178 132 / 40%), transparent 72%),
-    radial-gradient(45% 30% at 88% 4%, rgb(191 227 245 / 55%), transparent 70%),
-    radial-gradient(40% 28% at 6% 8%, rgb(206 216 245 / 45%), transparent 72%),
-    radial-gradient(55% 30% at 32% 104%, rgb(199 186 246 / 30%), transparent 72%),
-    radial-gradient(50% 26% at 92% 92%, rgb(214 196 244 / 26%), transparent 72%),
-    #f7f7f6;
+    linear-gradient(180deg, rgb(255 217 194 / 0%) 38%, rgb(255 217 194 / 80%) 50%, rgb(255 217 194 / 80%) 74%, rgb(255 217 194 / 0%) 86%),
+    linear-gradient(180deg, rgb(207 235 243 / 0%) 52%, rgb(207 235 243 / 70%) 64%, rgb(207 235 243 / 70%) 80%, rgb(207 235 243 / 0%) 92%),
+    linear-gradient(180deg, #ffffff 0%, #eaf1fb 55%, #f4eef7 100%);
   background-attachment: fixed;
 }
 /* Full-bleed canvas with centred content — the frame's inset page rhythm. */
@@ -123,12 +120,14 @@ main.a2 { margin-inline: auto; max-width: 68rem; }
 }
 
 /* ── Cards + layout rhythm ────────────────────────────────────────── */
+/* Sheet (Figma "Sheet / …"): white @40%, r20, 1px #0B0F14 @6% stroke,
+   BACKGROUND_BLUR 32, inner white @70% spread 1, drop shadow 0 12 40 black @8%. */
 .a2-card {
-  backdrop-filter: blur(12px);
-  background: rgb(255 255 255 / 62%);
-  border: 1px solid rgb(255 255 255 / 70%);
+  backdrop-filter: blur(32px);
+  background: rgb(255 255 255 / 40%);
+  border: 1px solid rgb(11 15 20 / 6%);
   border-radius: var(--a2-r-xl);
-  box-shadow: var(--a2-shadow-1);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 70%), 0 12px 40px rgb(0 0 0 / 8%);
   margin: 0 0 1.25rem;
   padding: 1.5rem;
 }
@@ -189,11 +188,11 @@ main.a2 { margin-inline: auto; max-width: 68rem; }
 
 /* ── Tables (A2 card table) ───────────────────────────────────────── */
 .a2-table-card {
-  backdrop-filter: blur(12px);
-  background: rgb(255 255 255 / 62%);
-  border: 1px solid rgb(255 255 255 / 70%);
+  backdrop-filter: blur(32px);
+  background: rgb(255 255 255 / 40%);
+  border: 1px solid rgb(11 15 20 / 6%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 70%), 0 12px 40px rgb(0 0 0 / 8%);
   border-radius: var(--a2-r-xl);
-  box-shadow: var(--a2-shadow-1);
   overflow: hidden;
   padding: 0.5rem 1.5rem 1rem;
 }
