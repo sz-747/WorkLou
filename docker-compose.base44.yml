@@ -24,8 +24,6 @@ services:
       DATABASE_URL: postgresql://referrals:local_referrals_password@db:5432/referrals
       BASE44_PUBLIC_HOST_SUFFIX: ${BASE44_PUBLIC_HOST_SUFFIX}
       WATCHPACK_POLLING: "true"
-      LLM_BASE_URL: ${LLM_BASE_URL:-}
-      LLM_MODEL: ${LLM_MODEL:-}
     env_file:
       - path: /run/base44/app.env
         required: false
