@@ -6,6 +6,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "./index";
 import { caseContexts, cases, type CaseContext } from "./schema";
 import { parseExtraction } from "../lib/extraction";
+import { contextFromFormData } from "../lib/context-form";
 
 let passed = 0;
 let failed = 0;
@@ -64,6 +65,70 @@ async function main() {
     unknown.needs.includes("education_support"),
   );
   assert("invalid urgency dropped to null", parseExtraction('{"urgency":"soon"}').urgency === null);
+
+  // ---------- PURE: draft-review form mapping keeps field_sources ----------
+  console.log("[FORM MAP] contextFromFormData keeps worker-corrected field_sources");
+  {
+    const fd = new FormData();
+    fd.set("needs", "housing_accommodation, DFV safety");
+    fd.set("suburb", "Waterloo");
+    fd.set("languages", "English, Arabic");
+    fd.set("summary", "Needs urgent crisis accommodation.");
+    fd.set("childrenCount", "2");
+    fd.set("petHas", "yes");
+    fd.set("petDetails", "dog");
+    fd.set("incomeStatus", "low");
+    fd.set("incomeSource", "casual part-time");
+    fd.set("visa", "bridging_e");
+    fd.set("urgency", "high");
+    fd.set("safetyPreferences", "No calls to main number");
+    fd.set("safeContactMethod", "sms");
+    // worker corrections: urgency and safe-contact are worker observations
+    fd.set("source_urgency", "worker_observation");
+    fd.set("source_safe_contact_method", "worker_observation");
+
+    const saved = contextFromFormData(fd);
+    assert(
+      "form values mapped (needs tokens, children, pets)",
+      saved.needs[0] === "housing_accommodation" &&
+        saved.needs[1] === "dfv_safety" &&
+        saved.children?.count === 2 &&
+        saved.pets?.has_pet === true &&
+        saved.pets?.details === "dog",
+    );
+    assert(
+      "worker-corrected tags kept on save (regression: never dropped)",
+      saved.field_sources?.urgency === "worker_observation" &&
+        saved.field_sources?.safe_contact_method === "worker_observation",
+    );
+    assert(
+      "untagged fields default to woman-stated",
+      saved.field_sources?.needs === "woman_stated" &&
+        saved.field_sources?.suburb === "woman_stated",
+    );
+    assert(
+      "fields with no recorded value carry no tag",
+      contextFromFormData(new FormData()).field_sources !== undefined &&
+        Object.keys(contextFromFormData(new FormData()).field_sources ?? {}).length === 0,
+    );
+
+    // a DB round-trip of the mapped context preserves the tags
+    const [tagCase] = await db
+      .insert(cases)
+      .values({ clientRef: "TEST-FORMMAP-001", originalNotes: "n", status: "open" })
+      .returning();
+    const [tagCtx] = await db
+      .insert(caseContexts)
+      .values({ caseId: tagCase.id, version: 1, context: saved, status: "draft" })
+      .returning();
+    const [back] = await db.select().from(caseContexts).where(eq(caseContexts.id, tagCtx.id));
+    assert(
+      "tags persist through a DB round-trip",
+      back.context.field_sources?.urgency === "worker_observation" &&
+        back.context.field_sources?.suburb === "woman_stated",
+    );
+    await db.delete(cases).where(eq(cases.id, tagCase.id));
+  }
 
   // ---------- DB FLOW: draft → edit → approve → re-extract ----------
   console.log("[CONTEXT FLOW] draft / edit / approve / re-extract versioning");

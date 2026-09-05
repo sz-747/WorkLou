@@ -11,62 +11,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../../db";
-import { caseContexts, cases, type CaseContext, type FieldSource } from "../../../db/schema";
+import { caseContexts, cases } from "../../../db/schema";
 import { extractContextFromNotes } from "../../../lib/extraction";
-import { CONTEXT_FIELDS, fieldHasValue } from "../../../lib/context-fields";
-
-function fdStr(fd: FormData, key: string): string | null {
-  const v = fd.get(key);
-  return typeof v === "string" && v.trim() ? v.trim() : null;
-}
-
-function fdList(fd: FormData, key: string): string[] {
-  const v = fdStr(fd, key);
-  if (!v) return [];
-  return v
-    .split(",")
-    .map((s) => s.trim().toLowerCase().replace(/[\s-]+/g, "_"))
-    .filter(Boolean);
-}
-
-/** Build a CaseContext from the review-form field names. */
-function contextFromFormData(fd: FormData): CaseContext {
-  const childrenCount = Number(fdStr(fd, "childrenCount"));
-  const petHas = fdStr(fd, "petHas"); // "" | "yes" | "no"
-  return {
-    needs: fdList(fd, "needs"),
-    suburb: fdStr(fd, "suburb"),
-    catchment: fdStr(fd, "catchment"),
-    children: Number.isFinite(childrenCount) && fdStr(fd, "childrenCount") !== null
-      ? { count: childrenCount }
-      : null,
-    pets:
-      petHas === "yes"
-        ? { has_pet: true, details: fdStr(fd, "petDetails") ?? undefined }
-        : petHas === "no"
-          ? { has_pet: false }
-          : null,
-    income: {
-      status: fdStr(fd, "incomeStatus"),
-      source: fdStr(fd, "incomeSource"),
-    },
-    visa: fdStr(fd, "visa"),
-    languages: fdList(fd, "languages"),
-    urgency: fdStr(fd, "urgency"),
-    safety_preferences: fdStr(fd, "safetyPreferences"),
-    safe_contact_method: fdStr(fd, "safeContactMethod"),
-    summary: fdStr(fd, "summary"),
-  };
-
-  // Phase 5: worker-corrected tags for who stated each field (draft review form).
-  const field_sources: Record<string, FieldSource> = {};
-  for (const f of CONTEXT_FIELDS) {
-    if (!fieldHasValue(f.key, context)) continue;
-    field_sources[f.key] =
-      fdStr(fd, `source_${f.key}`) === "worker_observation" ? "worker_observation" : "woman_stated";
-  }
-  return { ...context, field_sources };
-}
+import { contextFromFormData } from "../../../lib/context-form";
 
 /** Save the raw notes on the case, run LLM extraction, insert a NEW draft version. */
 export async function extractDraftContext(fd: FormData): Promise<void> {

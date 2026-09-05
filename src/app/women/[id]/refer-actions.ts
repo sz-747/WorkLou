@@ -18,6 +18,7 @@ import {
   saveReferralDraftText,
   getServiceForRefer,
   defaultFollowUpDate,
+  findActiveReferralForService,
 } from "../../../lib/refer";
 import { getLatestApprovedContext, getMatchCandidates, matchServices } from "../../../lib/matching";
 import { CONTEXT_FIELDS } from "../../../lib/context-fields";
@@ -52,6 +53,15 @@ export async function generateReferralDraft(fd: FormData): Promise<void> {
   const loaded = await getServiceForRefer(serviceId);
   if (!loaded) back("Service not found.");
 
+  // Guard: one active referral per case+service — a new draft is only allowed
+  // once the previous referral reached a final outcome (no duplicates while open).
+  const active = await findActiveReferralForService(caseId, serviceId);
+  if (active) {
+    back(
+      `An open referral to that service already exists (status: ${active.status}) — follow it up in stage 5 or record a final outcome before referring again.`,
+    );
+  }
+
   const input = buildReferralDraftInput(
     approved.context,
     sharedFields,
@@ -84,7 +94,11 @@ export async function saveReferralDraft(fd: FormData): Promise<void> {
   const referralId = String(fd.get("referralId"));
   const draftText = fdStr(fd, "draftText");
 
-  if (draftText) await saveReferralDraftText(referralId, draftText);
+  const back = (msg: string) =>
+    redirect(`/women/${caseId}?referError=${encodeURIComponent(msg)}`);
+  if (!draftText) back("The referral draft cannot be empty.");
+  const ok = await saveReferralDraftText(referralId, draftText);
+  if (!ok) back("Only draft referrals can be edited — sent referrals never change.");
   revalidatePath(`/women/${caseId}`);
 }
 
@@ -94,6 +108,13 @@ export async function markSent(fd: FormData): Promise<void> {
   const referralId = String(fd.get("referralId"));
   const followUpDue = fdStr(fd, "followUpDue") ?? defaultFollowUpDate();
 
-  await markReferralSent(referralId, followUpDue);
+  const ok = await markReferralSent(referralId, followUpDue);
+  if (!ok) {
+    redirect(
+      `/women/${caseId}?referError=${encodeURIComponent(
+        "Only draft referrals can be marked sent — sent referrals never change.",
+      )}`,
+    );
+  }
   revalidatePath(`/women/${caseId}`);
 }

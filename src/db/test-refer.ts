@@ -19,6 +19,7 @@ import {
   insertReferralDraft,
   markReferralSent,
   saveReferralDraftText,
+  findActiveReferralForService,
 } from "../lib/refer";
 import type { FactRow } from "../lib/matching";
 
@@ -270,6 +271,30 @@ async function main() {
   );
 
   assert("fieldHasValue helper drives share controls", fieldHasValue("visa", context) && !fieldHasValue("visa", { ...context, visa: null }));
+
+  // ---------- DUPLICATE GUARD: one active referral per case+service ----------
+  console.log("[DUPLICATE GUARD] active referral blocks a second draft to the same service");
+
+  const activeDraft = await findActiveReferralForService(testCase.id, testService.id);
+  assert(
+    "a draft or sent referral counts as active (blocks duplicates)",
+    activeDraft?.id === referralId && activeDraft?.status === "sent",
+  );
+  // (the referral was marked sent above — still active, still blocking)
+  await db.update(referrals).set({ status: "closed", outcome: "support_received" }).where(eq(referrals.id, referralId));
+  assert(
+    "no active referral once the referral is closed — a new one may be drafted",
+    (await findActiveReferralForService(testCase.id, testService.id)) === null,
+  );
+  await db.update(referrals).set({ status: "sent", outcome: null }).where(eq(referrals.id, referralId));
+  assert(
+    "reopened (sent) referral is active again",
+    (await findActiveReferralForService(testCase.id, testService.id))?.id === referralId,
+  );
+  assert(
+    "another service has no active referral",
+    (await findActiveReferralForService(testCase.id, "00000000-0000-0000-0000-000000000000")) === null,
+  );
 
   // ---------- CLEANUP ----------
   console.log("[CLEANUP] removing test rows");

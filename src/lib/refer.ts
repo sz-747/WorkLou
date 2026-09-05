@@ -6,7 +6,7 @@
  * and stored facts (docs/product.md: "The LLM never invents service facts").
  * Nothing is ever transmitted — "Mark as sent" is a DB-only state change.
  */
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { referrals, serviceAttributes, services, type CaseContext, type FieldSource } from "../db/schema";
 import { CONTEXT_FIELDS, fieldHasValue, fieldSourceOf, fieldValuePreview } from "./context-fields";
@@ -192,6 +192,27 @@ export async function getReferralsForCase(caseId: string) {
     .innerJoin(services, eq(referrals.serviceId, services.id))
     .where(eq(referrals.caseId, caseId))
     .orderBy(asc(referrals.createdAt));
+}
+
+/**
+ * The case's active (not yet closed) referral to a given service, if any.
+ * Guards against duplicate open referrals to the same service: a new draft
+ * is only allowed once the previous referral reached a final outcome.
+ */
+export async function findActiveReferralForService(caseId: string, serviceId: string) {
+  const [row] = await db
+    .select({ id: referrals.id, status: referrals.status })
+    .from(referrals)
+    .where(
+      and(
+        eq(referrals.caseId, caseId),
+        eq(referrals.serviceId, serviceId),
+        inArray(referrals.status, ["draft", "sent", "responded"]),
+      ),
+    )
+    .orderBy(asc(referrals.createdAt))
+    .limit(1);
+  return row ?? null;
 }
 
 /** The chosen service's row + stored facts, for draft generation. */
