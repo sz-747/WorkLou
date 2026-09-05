@@ -7,7 +7,11 @@
  */
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { runDiscovery } from "../../lib/discovery";
+import {
+  approveDiscoveryCandidate,
+  rejectDiscoveryCandidate,
+  runDiscovery,
+} from "../../lib/discovery";
 import {
   applyUpdateCandidate,
   rejectUpdateCandidate,
@@ -60,4 +64,34 @@ export async function rejectCandidate(fd: FormData): Promise<void> {
   if (!rejected) back("That candidate no longer exists or was already decided.");
   revalidatePath("/admin");
   redirect("/admin?updaterMsg=" + encodeURIComponent("Update rejected — canonical service data unchanged."));
+}
+
+const backDiscovery = (msg: string) => redirect(`/admin?discoveryError=${encodeURIComponent(msg)}`);
+
+/** Approve a discovery candidate: extracted evidence becomes a canonical service. */
+export async function approveDiscoveryAction(fd: FormData): Promise<void> {
+  const candidateId = String(fd.get("candidateId"));
+  const decidedBy = fdStr(fd, "decidedBy");
+  if (!decidedBy) backDiscovery("Your name/initials are required to approve a candidate.");
+  const service = await approveDiscoveryCandidate(candidateId, decidedBy);
+  if (!service) backDiscovery("That candidate no longer exists or was already decided.");
+  revalidatePath("/admin");
+  redirect(
+    `/admin?discoveryMsg=${encodeURIComponent(
+      `Candidate approved — "${service.name}" is now a canonical service (decision logged).`,
+    )}`,
+  );
+}
+
+/** Reject a discovery candidate: canonical data unchanged. */
+export async function rejectDiscoveryAction(fd: FormData): Promise<void> {
+  const candidateId = String(fd.get("candidateId"));
+  const decidedBy = fdStr(fd, "decidedBy");
+  if (!decidedBy) backDiscovery("Your name/initials are required to reject a candidate.");
+  const rejected = await rejectDiscoveryCandidate(candidateId, decidedBy);
+  if (!rejected) backDiscovery("That candidate no longer exists or was already decided.");
+  revalidatePath("/admin");
+  redirect(
+    `/admin?discoveryMsg=${encodeURIComponent("Candidate rejected — canonical service data unchanged.")}`,
+  );
 }

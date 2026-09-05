@@ -8,8 +8,12 @@
  */
 import { sql } from "drizzle-orm";
 import { db } from "./index";
-import { discoveryCandidates, serviceAttributes, services } from "./schema";
-import { runDiscovery } from "../lib/discovery";
+import { discoveryCandidates, serviceAttributes, serviceChangeLog, services } from "./schema";
+import {
+  approveDiscoveryCandidate,
+  rejectDiscoveryCandidate,
+  runDiscovery,
+} from "../lib/discovery";
 import type { SerpResult } from "../lib/brightdata";
 import type { SourceSnapshot } from "../lib/sources";
 
@@ -69,7 +73,7 @@ async function main() {
   console.log("[RUN 1] provider URLs → normalised, deduplicated review-queue rows");
 
   const run1 = await runDiscovery({ queries: ["test query"], deps });
-  const mine = await db.select().from(discoveryCandidates).where(sql`${discoveryCandidates.sourceUrl} like 'https://%'`);
+  const mine = await db.select().from(discoveryCandidates).where(sql`${discoveryCandidates.sourceUrl} like 'https://%.example.org/%'`);
 
   assert(
     "summary: 5 results considered, 1 created, 3 skipped (known/social/duplicate), 1 failed, 0 search failures",
@@ -121,7 +125,7 @@ async function main() {
   console.log("[RUN 2] repeated discovery is idempotent");
 
   const run2 = await runDiscovery({ queries: ["test query"], deps });
-  const stillQueued = await db.select().from(discoveryCandidates).where(sql`${discoveryCandidates.sourceUrl} like 'https://%'`);
+  const stillQueued = await db.select().from(discoveryCandidates).where(sql`${discoveryCandidates.sourceUrl} like 'https://%.example.org/%'`);
   assert(
     "second run queues nothing new; same single candidate row",
     run2.created === 0 && stillQueued.filter((c) => c.sourceUrl === newUrl).length === 1,
@@ -139,13 +143,90 @@ async function main() {
     failRun.created === 0 && failRun.failed === 2 && failRun.log.every((e) => e.message.includes("SEARCH FAILED")),
   );
 
+  // ---------- review/merge: approve → canonical; reject → untouched ----------
+  console.log("[REVIEW] approve merges into canonical; reject leaves canonical untouched");
+
+  const [cand] = stillQueued.filter((c) => c.sourceUrl === newUrl);
+  const approved = await approveDiscoveryCandidate(cand.id, "Lou (admin)");
+  assert(
+    "approval creates the canonical service with extracted fields + discovery provenance",
+    approved?.name === "New Provider Community Service" &&
+      approved?.phone === "(02) 9000 7777" &&
+      approved?.status === "active" &&
+      approved?.sourceType === "discovery_review" &&
+      approved?.sourceUrl === newUrl &&
+      approved?.sourceName?.includes("SERP discovery") === true,
+  );
+  const newAttrs = await db
+    .select()
+    .from(serviceAttributes)
+    .where(sql`${serviceAttributes.serviceId} = ${approved!.id}`);
+  assert(
+    "attribute facts inserted with machine provenance + the candidate's retrieval time",
+    newAttrs.length === 1 &&
+      newAttrs[0].attrType === "need" &&
+      newAttrs[0].value === "housing_accommodation" &&
+      newAttrs[0].sourceType === "machine" &&
+      newAttrs[0].verificationStatus === "verified_machine" &&
+      newAttrs[0].sourceUrl === newUrl &&
+      new Date(newAttrs[0].retrievedAt as Date).toISOString() === "2026-09-05T10:00:00.000Z",
+  );
+  const [mergedCand] = await db.select().from(discoveryCandidates).where(sql`${discoveryCandidates.id} = ${cand.id}`);
+  assert(
+    "candidate marked merged with who/when",
+    mergedCand.status === "merged" && mergedCand.decidedBy === "Lou (admin)" && mergedCand.decidedAt !== null,
+  );
+  assert(
+    "deciding an already-decided candidate is rejected safely",
+    (await approveDiscoveryCandidate(cand.id, "X")) === null && (await rejectDiscoveryCandidate(cand.id, "X")) === null,
+  );
+  const history = await db.select().from(serviceChangeLog).where(sql`${serviceChangeLog.serviceId} = ${approved!.id}`);
+  assert(
+    "append-only change log records the discovery approval",
+    history.length === 1 && history[0].field === "created" && history[0].changedBy.includes("Lou (admin)"),
+  );
+
+  const rejectUrl = "https://rejectme.example.org/";
+  await runDiscovery({
+    queries: ["q"],
+    deps: {
+      search: async () => [{ position: 1, title: "Reject Me Service", url: rejectUrl, snippet: "nope" }],
+      snapshot: async () => ({
+        sourceName: `stub page for ${rejectUrl}`,
+        sourceUrl: rejectUrl,
+        evidenceType: "direct_fetch",
+        retrievedAt: new Date("2026-09-05T10:00:00Z"),
+        facts: [{ kind: "service_field", field: "name", value: "Reject Me Service" }],
+      }),
+    },
+  });
+  const [rejectCand] = await db.select().from(discoveryCandidates).where(sql`${discoveryCandidates.sourceUrl} = ${rejectUrl}`);
+  const svcPre = (await db.select({ c: sql<number>`count(*)::int` }).from(services))[0].c;
+  const attrPre = (await db.select({ c: sql<number>`count(*)::int` }).from(serviceAttributes))[0].c;
+  const rejected = await rejectDiscoveryCandidate(rejectCand.id, "Lou (admin)");
+  const svcPost = (await db.select({ c: sql<number>`count(*)::int` }).from(services))[0].c;
+  const attrPost = (await db.select({ c: sql<number>`count(*)::int` }).from(serviceAttributes))[0].c;
+  assert(
+    "rejection records the decision, canonical data untouched",
+    rejected?.status === "rejected" && rejected?.decidedBy === "Lou (admin)" && svcPost === svcPre && attrPost === attrPre,
+  );
+
+  // ---------- idempotency with decided candidates ----------
+  console.log("[RUN 3] repeated runs do not duplicate reviewed or pending candidates");
+  const run3 = await runDiscovery({ queries: ["test query"], deps });
+  assert(
+    "run 3 queues nothing: merged URL is now a known service, reviewed candidate stays decided once",
+    run3.created === 0,
+  );
+
   // ---------- CLEANUP ----------
   console.log("[CLEANUP] removing test rows");
-  await db.delete(discoveryCandidates).where(sql`${discoveryCandidates.sourceUrl} like 'https://%'`);
+  await db.delete(services).where(sql`${services.id} = ${approved!.id}`); // cascades attributes + change log
+  await db.delete(discoveryCandidates).where(sql`${discoveryCandidates.sourceUrl} like 'https://%.example.org/%'`);
   const left = await db
     .select({ c: sql<number>`count(*)::int` })
     .from(discoveryCandidates)
-    .where(sql`${discoveryCandidates.sourceUrl} like 'https://%'`);
+    .where(sql`${discoveryCandidates.sourceUrl} like 'https://%.example.org/%'`);
   assert("test rows cleaned up", (left[0]?.c ?? 0) === 0);
 
   console.log(`\nResult: ${passed} passed, ${failed} failed.`);

@@ -12,10 +12,20 @@
  * Idempotent: provider pages already in the canonical DB or already queued
  * (any status) are skipped, and the same provider name on the same site is
  * never queued twice (dedup key = normalised name @ site).
+ *
+ * Review/merge (the human half, also this file): `approveDiscoveryCandidate`
+ * creates the canonical service from the candidate's stored evidence —
+ * extracted service fields → `services` columns, attribute facts →
+ * `service_attributes` rows, each carrying the candidate's provenance
+ * (source URL, retrieval time, evidence type) — and logs the decision in the
+ * append-only change log. `rejectDiscoveryCandidate` records the decision and
+ * leaves canonical data untouched. Only pending candidates can be decided;
+ * after a decision the row (and the URL/name it carries) is never re-queued.
  */
-import { isNotNull } from "drizzle-orm";
+import { eq, isNotNull } from "drizzle-orm";
 import { db } from "../db";
-import { discoveryCandidates, services } from "../db/schema";
+import { discoveryCandidates, serviceAttributes, services } from "../db/schema";
+import { logServiceChange } from "./admin";
 import { serpSearch, type SerpResult } from "./brightdata";
 import { fetchSnapshot, type SourceSnapshot } from "./sources";
 import type { SourceFact } from "./source-facts";
@@ -176,4 +186,93 @@ export async function runDiscovery({
   }
 
   return { queries, resultsFound: found.size, urlsConsidered: considered, created, skipped, failed, log: entries };
+}
+
+/** Extracted service fields that map onto `services` columns on approval. */
+const CANDIDATE_SERVICE_FIELDS = ["organisation", "description", "phone", "email", "address", "catchment"] as const;
+
+/**
+ * Approve a pending discovery candidate: the extracted evidence becomes a
+ * canonical service (service fields → services columns, attribute facts →
+ * service_attributes rows with machine provenance + the candidate's
+ * retrieval time). Returns the created service; null when the candidate no
+ * longer exists or was already decided.
+ */
+export async function approveDiscoveryCandidate(candidateId: string, decidedBy: string) {
+  const [c] = await db.select().from(discoveryCandidates).where(eq(discoveryCandidates.id, candidateId));
+  if (!c || c.status !== "pending_review") return null;
+
+  const facts = (((c.extractedData as { facts?: SourceFact[] } | null)?.facts) ?? []) as SourceFact[];
+  const serviceField = (field: string) =>
+    facts.find(
+      (f): f is Extract<SourceFact, { kind: "service_field" }> => f.kind === "service_field" && f.field === field,
+    )?.value ?? null;
+
+  const created = await db.transaction(async (tx) => {
+    const [service] = await tx
+      .insert(services)
+      .values({
+        name: serviceField("name") ?? c.name,
+        ...Object.fromEntries(CANDIDATE_SERVICE_FIELDS.map((f) => [f, serviceField(f)])),
+        status: "active",
+        sourceType: "discovery_review",
+        sourceName: c.sourceName,
+        sourceUrl: c.sourceUrl,
+      })
+      .returning();
+
+    const attributeFacts = facts.filter(
+      (f): f is Extract<SourceFact, { kind: "attribute" }> => f.kind === "attribute",
+    );
+    if (attributeFacts.length > 0) {
+      await tx.insert(serviceAttributes).values(
+        attributeFacts.map((f) => ({
+          serviceId: service.id,
+          attrType: f.attrType,
+          key: f.key,
+          value: f.value,
+          sourceType: "machine",
+          sourceName: c.sourceName,
+          sourceUrl: c.sourceUrl,
+          retrievedAt: c.retrievedAt,
+          verificationStatus: "verified_machine",
+        })),
+      );
+    }
+
+    await tx
+      .update(discoveryCandidates)
+      .set({ status: "merged", decidedBy, decidedAt: new Date() })
+      .where(eq(discoveryCandidates.id, c.id));
+    return service;
+  });
+
+  await logServiceChange({
+    serviceId: created.id,
+    attributeId: null,
+    entity: "service",
+    field: "created",
+    oldValue: null,
+    newValue: created.name,
+    changedBy: `Discovery approved by ${decidedBy}`,
+    note: `candidate: ${c.name} — source: ${c.sourceUrl ?? c.sourceName ?? "—"} (${c.evidenceType ?? "unknown"} evidence), retrieved ${c.retrievedAt ? new Date(c.retrievedAt).toLocaleDateString("en-AU") : "—"}`,
+  });
+
+  return created;
+}
+
+/**
+ * Reject a pending discovery candidate: the decision is recorded on the row
+ * and canonical data is untouched. Returns the updated candidate; null when
+ * it no longer exists or was already decided.
+ */
+export async function rejectDiscoveryCandidate(candidateId: string, decidedBy: string) {
+  const [c] = await db.select().from(discoveryCandidates).where(eq(discoveryCandidates.id, candidateId));
+  if (!c || c.status !== "pending_review") return null;
+  const [updated] = await db
+    .update(discoveryCandidates)
+    .set({ status: "rejected", decidedBy, decidedAt: new Date() })
+    .where(eq(discoveryCandidates.id, c.id))
+    .returning();
+  return updated;
 }

@@ -12,6 +12,7 @@ export async function POST(request: Request) {
   const url = new URL(request.url);
   const limitParam = Number(url.searchParams.get("limit"));
   const limit = Number.isInteger(limitParam) && limitParam > 0 ? limitParam : undefined;
+  const trigger = url.searchParams.get("trigger") === "scheduled" ? "scheduled" : "manual";
   const summary = await runDiscovery(limit ? { limitPerQuery: limit } : {});
-  return Response.json(summary);
+  return Response.json({ trigger, ...summary });
 }

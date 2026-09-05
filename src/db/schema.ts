@@ -332,6 +332,9 @@ export const discoveryCandidates = pgTable(
     /** provenance: how/when the candidate page content was retrieved */
     retrievedAt: timestamp("retrieved_at", { withTimezone: true }),
     evidenceType: text("evidence_type"),
+    /** review decision provenance (who decided and when) */
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

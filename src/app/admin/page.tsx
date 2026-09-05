@@ -8,7 +8,14 @@
 import Link from "next/link";
 import { getDiscoveryCandidates, getServicesOverview } from "../../lib/admin";
 import { getUpdateCandidates, getUpdaterRuns } from "../../lib/updater";
-import { approveCandidate, rejectCandidate, runDiscoveryAction, runUpdaterAction } from "./actions";
+import {
+  approveCandidate,
+  approveDiscoveryAction,
+  rejectCandidate,
+  rejectDiscoveryAction,
+  runDiscoveryAction,
+  runUpdaterAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -283,12 +290,12 @@ export default async function AdminServices({
         </tbody>
       </table>
 
-      <h2>Discovery candidates (queue for review)</h2>
+      <h2>Discovery candidates (review queue)</h2>
       <p style={{ fontSize: "0.85rem" }}>
-        New-service candidates found by the discovery process: SERP API (Bright Data) → provider
-        URLs → direct fetch / Web Unlocker → normalise → dedupe → this review queue. Review/merge
-        actions arrive with the rest of Phase 7B — for now the queue is inspectable here. Nothing
-        is auto-merged into the service list.
+        New-service candidates found by discovery: SERP API (Bright Data) → provider URLs →
+        direct fetch / Web Unlocker → normalise → dedupe → this queue. Approving a candidate
+        creates the canonical service from its extracted evidence; rejecting leaves canonical data
+        untouched. Runs on the schedule and on demand — nothing is auto-merged:
       </p>
       <form action={runDiscoveryAction} style={{ margin: "0.4rem 0" }}>
         <button type="submit">Run discovery now</button>
@@ -305,6 +312,7 @@ export default async function AdminServices({
               <th>Retrieved</th>
               <th>Evidence</th>
               <th>Status</th>
+              <th>Review</th>
               <th>Extracted data</th>
             </tr>
           </thead>
@@ -328,6 +336,31 @@ export default async function AdminServices({
                 </td>
                 <td>
                   <span className="pill">{c.status.replace(/_/g, " ")}</span>
+                  {c.decidedBy ? (
+                    <span style={{ fontSize: "0.75rem", color: "#666" }}>
+                      {" "}by {c.decidedBy} {fmtDateTime(c.decidedAt)}
+                    </span>
+                  ) : null}
+                </td>
+                <td>
+                  {c.status === "pending_review" ? (
+                    <form action={approveDiscoveryAction} style={{ display: "flex", gap: "0.3rem", alignItems: "center" }}>
+                      <input type="hidden" name="candidateId" value={c.id} />
+                      <input name="decidedBy" placeholder="your name" style={{ ...inputStyle, width: "6.5rem" }} required />
+                      <button type="submit" title="Create the canonical service from this candidate's evidence">
+                        Approve
+                      </button>
+                      <button
+                        type="submit"
+                        formAction={rejectDiscoveryAction}
+                        title="Record rejection — canonical data unchanged"
+                      >
+                        Reject
+                      </button>
+                    </form>
+                  ) : (
+                    <span style={{ fontSize: "0.75rem", color: "#666" }}>decided</span>
+                  )}
                 </td>
                 <td style={{ fontSize: "0.75rem", maxWidth: "24rem" }}>
                   {c.extractedData ? JSON.stringify(c.extractedData) : "—"}
