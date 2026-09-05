@@ -194,3 +194,15 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 - Result: pass
 - Known issues: none
 - Next phase: fill docs with real project content
+
+## 2026-09-05 — Removed Web Unlocker fallback from source fetching (Phase 7)
+
+- Why: the Bright Data Web Unlocker fallback is a production-only concern and not required for the demo; provider pages that block direct fetching should simply be recorded as source failures. The SERP API discovery path is kept unchanged.
+- Branch: `project-status-overview`
+- Changes: `src/lib/brightdata.ts` — removed `unlockerFetch()`/`UnlockerContent` and the `BRIGHT_DATA_UNLOCKER_ZONE` env reference (SERP adapter untouched). `src/lib/sources.ts` — `fetchSnapshot()` is now direct-fetch only: a failed fetch (network error / non-200) throws `direct fetch of <url> failed (<reason>)`, which the updater/discovery log as a source failure; removed the `unlocker` injection boundary and `unlockerDefault()`. Comments/admin copy updated; no behaviour changes to fixtures, normalisation, dedupe, queueing, or review.
+- DB changes: none (the `web_unlocker` value stays in the evidence-type check constraints for historical rows; nothing produces it now)
+- Secrets: `BRIGHT_DATA_UNLOCKER_ZONE` removed from `.base44/environment.json` (was never provided)
+- Tests run: `npm run db:test:brightdata` (rewritten for the new flow), `npm run db:test:discovery`, `npm run db:test:updater`, plus a live manual discovery run
+- Result: pass (10/10 brightdata, 17/17 discovery, 19/17 updater, live manual discovery run: SERP ok, blocked URLs logged as plain source failures, no unlocker references anywhere)
+- Known issues: blocked provider sites (HTTP 403) now always end as logged source failures — expected demo behaviour
+- Next phase: n/a

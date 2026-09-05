@@ -293,7 +293,7 @@ export default async function AdminServices({
       <h2>Discovery candidates (review queue)</h2>
       <p style={{ fontSize: "0.85rem" }}>
         New-service candidates found by discovery: SERP API (Bright Data) → provider URLs →
-        direct fetch / Web Unlocker → normalise → dedupe → this queue. Approving a candidate
+        direct fetch → normalise → dedupe → this queue. Approving a candidate
         creates the canonical service from its extracted evidence; rejecting leaves canonical data
         untouched. Runs on the schedule and on demand — nothing is auto-merged:
       </p>

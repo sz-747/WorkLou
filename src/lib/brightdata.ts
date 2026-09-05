@@ -1,23 +1,19 @@
 /**
- * Phase 7 — Bright Data REST adapters.
- * Two small, replaceable adapters over Bright Data's unified request
+ * Phase 7 — Bright Data REST adapter.
+ * A small, replaceable adapter over Bright Data's unified request
  * endpoint (POST https://api.brightdata.com/request, Bearer auth):
  *
- *  - serpSearch()     — SERP API: google search results for discovering
- *                       NEW community services (Phase 7B discovery).
- *  - unlockerFetch()  — Web Unlocker API: current content of an arbitrary
- *                       provider page, for when normal direct fetching is
- *                       insufficient (bot-blocked sites etc.).
+ *  - serpSearch() — SERP API: google search results for discovering
+ *                   NEW community services (Phase 7B discovery).
  *
  * There is deliberately NO dependency on the Web Scraper Dataset API or
- * BRIGHT_DATA_DATASET_ID. Both adapters are plain functions over an
- * injectable fetch implementation, so they are unit-testable offline and
- * the whole provider can be swapped later without touching callers.
+ * BRIGHT_DATA_DATASET_ID. The adapter is a plain function over an
+ * injectable fetch implementation, so it is unit-testable offline and the
+ * whole provider can be swapped later without touching callers.
  *
  * Required env (see .base44/environment.json):
- *  - BRIGHT_DATA_API_KEY       — API token (both adapters)
- *  - BRIGHT_DATA_SERP_ZONE     — SERP API zone name (discovery)
- *  - BRIGHT_DATA_UNLOCKER_ZONE — Web Unlocker zone name (content retrieval)
+ *  - BRIGHT_DATA_API_KEY   — API token
+ *  - BRIGHT_DATA_SERP_ZONE — SERP API zone name (discovery)
  */
 
 const API_URL = "https://api.brightdata.com/request";
@@ -28,8 +24,6 @@ export type SerpResult = {
   url: string;
   snippet: string | null;
 };
-
-export type UnlockerContent = { statusCode: number; body: string };
 
 type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 type AdapterDeps = { fetchImpl?: FetchLike; timeoutMs?: number };
@@ -58,28 +52,6 @@ async function brightDataRequest(
   } finally {
     clearTimeout(timer);
   }
-}
-
-/**
- * Web Unlocker API — retrieve the current content of an arbitrary page
- * (returned as markdown, ideal for downstream LLM normalisation).
- */
-export async function unlockerFetch(pageUrl: string, deps: AdapterDeps = {}): Promise<UnlockerContent> {
-  const zone = process.env.BRIGHT_DATA_UNLOCKER_ZONE;
-  if (!process.env.BRIGHT_DATA_API_KEY || !zone) {
-    throw new Error(
-      "Bright Data Web Unlocker not configured — set BRIGHT_DATA_API_KEY and BRIGHT_DATA_UNLOCKER_ZONE",
-    );
-  }
-  const data = await brightDataRequest(
-    { zone, url: pageUrl, format: "raw", data_format: "markdown" },
-    deps,
-  );
-  const body = typeof data.body === "string" ? data.body : "";
-  if (!body.trim()) {
-    throw new Error(`Web Unlocker returned no content for ${pageUrl} (status ${String(data.status_code)})`);
-  }
-  return { statusCode: typeof data.status_code === "number" ? data.status_code : 200, body };
 }
 
 /**

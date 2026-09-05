@@ -49,7 +49,7 @@ async function main() {
   const stubSnapshot = (url: string): SourceSnapshot => ({
     sourceName: `stub page for ${url}`,
     sourceUrl: url,
-    evidenceType: "web_unlocker",
+    evidenceType: "direct_fetch",
     retrievedAt: new Date("2026-09-05T10:00:00Z"),
     facts: [
       { kind: "service_field", field: "name", value: "New Provider Community Service" },
@@ -98,7 +98,7 @@ async function main() {
     queued[0].sourceUrl === newUrl &&
       queued[0].sourceName?.includes("SERP discovery") === true &&
       new Date(queued[0].retrievedAt ?? 0).toISOString() === "2026-09-05T10:00:00.000Z" &&
-      queued[0].evidenceType === "web_unlocker",
+      queued[0].evidenceType === "direct_fetch",
   );
   const extracted = queued[0].extractedData as { facts?: unknown[]; serp?: { snippet?: string } };
   assert(

@@ -1,7 +1,7 @@
 /**
  * Phase 7B (discovery side) — HTTP entry point. POSTing this route runs the
- * new-service discovery once: SERP API → provider URLs → direct fetch /
- * Web Unlocker → normalise → dedupe → review queue. Never merges anything
+ * new-service discovery once: SERP API → provider URLs → direct fetch →
+ * normalise → dedupe → review queue. Never merges anything
  * into the canonical database — review/merge is a human decision.
  */
 import { runDiscovery } from "../../../../lib/discovery";

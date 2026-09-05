@@ -1,7 +1,7 @@
 /**
  * Phase 7 — LLM normalisation of fetched provider pages.
- * Raw page content (HTML/markdown) from a direct fetch or the Bright Data
- * Web Unlocker is turned into the same normalised SourceFact[] shape every
+ * Raw page content (HTML etc.) from a direct fetch is turned into the same
+ * normalised SourceFact[] shape every
  * other adapter produces. Uses the same LLM configuration as the worker
  * stages (LLM_BASE_URL / LLM_API_KEY / LLM_MODEL). Only facts the page
  * actually states may be extracted — the prompt forbids invention and the

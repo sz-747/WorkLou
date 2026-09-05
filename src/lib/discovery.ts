@@ -1,7 +1,7 @@
 /**
  * Phase 7B (discovery side) — find NEW community services.
- * SERP API (Bright Data) → discovered provider URLs → direct fetch with
- * Web Unlocker fallback → normalise → deduplicate → review queue.
+ * SERP API (Bright Data) → discovered provider URLs → direct fetch →
+ * normalise → deduplicate → review queue.
  *
  * Queueing is ALL this does: rows land in `discovery_candidates` with full
  * provenance (source URL, retrieval timestamp, evidence type) for a human
@@ -63,7 +63,7 @@ export type DiscoverySummary = {
 
 export type DiscoveryDeps = {
   search?: (query: string) => Promise<SerpResult[]>; // default: Bright Data SERP API
-  snapshot?: (url: string) => Promise<SourceSnapshot>; // default: direct fetch → Web Unlocker fallback
+  snapshot?: (url: string) => Promise<SourceSnapshot>; // default: direct fetch (fixture for fixture URLs)
 };
 
 function hostname(url: string): string {

@@ -7,23 +7,21 @@
  * Adapter selection by service.source_url:
  *  - URL present in FIXTURES → deterministic snapshot fixture (demo path,
  *    implementation plan decision #2 — live websites can't break it)
- *  - "https://…" → direct fetch first. If the direct fetch itself fails
- *    (network error / non-200, e.g. a provider site that blocks plain
- *    fetching), fall back to the Bright Data Web Unlocker adapter
- *    (src/lib/brightdata.ts) when BRIGHT_DATA_API_KEY +
- *    BRIGHT_DATA_UNLOCKER_ZONE are configured.
+ *  - "https://…" → direct fetch. If the fetch fails (network error /
+ *    non-200, e.g. a provider site that blocks plain fetching) the failure
+ *    is thrown and recorded as a source failure — no fallback fetcher in
+ *    the demo environment (the Bright Data Web Unlocker fallback was
+ *    removed as a production-only concern).
  *
- *    Content from either path is normalised the same way: pages serving the
- *    normalised JSON payload are used as-is; any other content (HTML or
- *    the Web Unlocker's markdown) goes through LLM extraction
- *    (src/lib/page-extraction.ts).
+ *    Fetched content is normalised: pages serving the normalised JSON
+ *    payload are used as-is; any other content (HTML etc.) goes through
+ *    LLM extraction (src/lib/page-extraction.ts).
  *
  * Any adapter failure throws — the updater records it as a source failure
- * and never touches canonical data. The unlocker is behind a small
- * injectable boundary (SourceFetchDeps) so the provider can be replaced
- * later without touching the updater.
+ * and never touches canonical data. Fetching is behind a small injectable
+ * boundary (SourceFetchDeps) so the provider can be replaced later without
+ * touching the updater.
  */
-import { unlockerFetch } from "./brightdata";
 import { extractFactsFromPage } from "./page-extraction";
 import { normaliseFacts, type EvidenceType, type SourcePayload } from "./source-facts";
 
@@ -78,7 +76,6 @@ export type FetchedPage = { ok: boolean; status: number; text: string };
 /** Injectable boundaries — tests stub these; defaults are the real implementations. */
 export type SourceFetchDeps = {
   httpGet?: (url: string) => Promise<FetchedPage>;
-  unlocker?: (url: string) => Promise<{ statusCode: number; body: string }>;
   extract?: (content: string, sourceUrl: string) => Promise<{ sourceName: string; facts: SourceFact[] }>;
 };
 
@@ -148,36 +145,16 @@ export async function fetchSnapshot(serviceUrl: string, deps: SourceFetchDeps = 
     throw new Error("no machine-accessible source configured for this service");
   }
 
-  // direct fetch first
+  // direct fetch
   const httpGet = deps.httpGet ?? directHttpGet;
   let page: FetchedPage | null = null;
-  let directError: string;
+  let fetchError: string;
   try {
     page = await httpGet(serviceUrl);
-    directError = `HTTP ${page.status}`;
+    fetchError = `HTTP ${page.status}`;
   } catch (err) {
-    directError = err instanceof Error ? err.message : String(err);
+    fetchError = err instanceof Error ? err.message : String(err);
   }
   if (page?.ok) return snapshotFromContent(page.text, serviceUrl, "direct_fetch", deps);
-
-  // Web Unlocker fallback for provider sites normal fetching can't reach
-  const unlocker = deps.unlocker ?? unlockerDefault();
-  if (!unlocker) {
-    throw new Error(
-      `direct fetch of ${serviceUrl} failed (${directError}); Web Unlocker fallback not configured (BRIGHT_DATA_API_KEY / BRIGHT_DATA_UNLOCKER_ZONE)`,
-    );
-  }
-  try {
-    const content = await unlocker(serviceUrl);
-    return await snapshotFromContent(content.body, serviceUrl, "web_unlocker", deps);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`direct fetch of ${serviceUrl} failed (${directError}); Web Unlocker fallback also failed (${msg})`);
-  }
-}
-
-/** Default unlocker boundary: the real Bright Data adapter, when configured. */
-function unlockerDefault(): SourceFetchDeps["unlocker"] {
-  if (!process.env.BRIGHT_DATA_API_KEY || !process.env.BRIGHT_DATA_UNLOCKER_ZONE) return null;
-  return (url: string) => unlockerFetch(url);
+  throw new Error(`direct fetch of ${serviceUrl} failed (${fetchError})`);
 }
