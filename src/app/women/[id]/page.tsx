@@ -6,14 +6,14 @@ import {
   caseContexts,
   caseDocuments,
   cases,
-  referrals,
-  services,
 } from "../../../db/schema";
 import { ContextStage } from "./ContextStage";
 import { FindSupportStage } from "./FindSupportStage";
+import { ReferStage } from "./ReferStage";
 import { VerifyStage } from "./VerifyStage";
 import { getLatestApprovedContext, getMatchCandidates, matchServices } from "../../../lib/matching";
 import { getServiceForVerify } from "../../../lib/verify";
+import { getReferralsForCase } from "../../../lib/refer";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +25,15 @@ export default async function CaseWorkspace({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ extractError?: string; verify?: string; verifyError?: string }>;
+  searchParams: Promise<{
+    extractError?: string;
+    verify?: string;
+    verifyError?: string;
+    referError?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { extractError, verify, verifyError } = await searchParams;
+  const { extractError, verify, verifyError, referError } = await searchParams;
 
   const [caseRow] = await db.select().from(cases).where(eq(cases.id, id));
   if (!caseRow) notFound();
@@ -40,16 +45,7 @@ export default async function CaseWorkspace({
     .orderBy(desc(caseContexts.version))
     .limit(1);
 
-  const referralRows = await db
-    .select({
-      id: referrals.id,
-      status: referrals.status,
-      serviceName: services.name,
-      outcome: referrals.outcome,
-    })
-    .from(referrals)
-    .innerJoin(services, eq(referrals.serviceId, services.id))
-    .where(eq(referrals.caseId, id));
+  const referralRows = await getReferralsForCase(id);
 
   const docCount = (await db.select().from(caseDocuments).where(eq(caseDocuments.caseId, id))).length;
 
@@ -63,17 +59,6 @@ export default async function CaseWorkspace({
   const selectedService = verifyServiceId ? await getServiceForVerify(verifyServiceId) : null;
 
   const stages = [
-    {
-      n: 4,
-      name: "Refer",
-      state:
-        referralRows.length > 0
-          ? `${referralRows.length} referral(s): ${referralRows
-              .map((r) => `${r.serviceName} (${r.status})`)
-              .join(", ")}`
-          : "No referrals yet.",
-      placeholder: "Draft referral from approved context → review → mark sent. (Phase 5)",
-    },
     {
       n: 5,
       name: "Follow up + document",
@@ -111,6 +96,18 @@ export default async function CaseWorkspace({
           selected={selectedService}
           context={approvedContext?.context ?? null}
           verifyError={verifyError}
+        />
+      </section>
+      <section style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
+        <h3 style={{ margin: "0.25rem 0" }}>4. Refer</h3>
+        <ReferStage
+          caseId={id}
+          suitable={suitable.map((r) => ({ id: r.service.id, name: r.service.name }))}
+          approvedContext={
+            approvedContext ? { id: approvedContext.id, context: approvedContext.context } : null
+          }
+          referrals={referralRows}
+          referError={referError}
         />
       </section>
       {stages.map((s) => (

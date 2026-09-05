@@ -52,7 +52,8 @@ export function factLabel(key: string): string {
   return LABELS[key] ?? key.replace(/_/g, " ");
 }
 
-function isKnown(fact: FactRow): boolean {
+/** Whether a stored fact counts as known (shared by Verify and Refer). */
+export function isKnownFact(fact: FactRow): boolean {
   return (
     fact.value !== "unknown" &&
     (fact.verificationStatus === "verified_machine" || fact.verificationStatus === "provider_confirmed")
@@ -85,7 +86,7 @@ export function groupFacts(context: CaseContext, facts: FactRow[]): VerifyGroup 
   const pending: VerifyItem[] = [];
 
   for (const fact of facts) {
-    if (isKnown(fact)) known.push(fact);
+    if (isKnownFact(fact)) known.push(fact);
     else if (needsConfirmation(fact)) {
       const stale = fact.verificationStatus === "stale";
       pending.push({

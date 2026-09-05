@@ -4,6 +4,7 @@
  * Drafts are clearly marked; approved rows are read-only here.
  */
 import type { CaseContext } from "../../../db/schema";
+import { CONTEXT_FIELDS, fieldSourceOf } from "../../../lib/context-fields";
 import { approveContext, extractDraftContext, saveDraftContext } from "./actions";
 
 type ContextRow = {
@@ -145,6 +146,27 @@ export function ContextStage({
           <Field label="Summary">
             <textarea name="summary" rows={2} defaultValue={ctx.summary ?? ""} style={inputStyle} />
           </Field>
+          {/* Phase 5: who stated each field — used by Refer to keep
+              woman-stated information separate from worker observations */}
+          <p style={{ fontSize: "0.8rem", margin: "0.5rem 0 0.2rem" }}>
+            Who stated each item (editable — the referral draft keeps these separate):
+          </p>
+          {CONTEXT_FIELDS.map((f) => (
+            <label
+              key={f.key}
+              style={{ display: "inline-block", marginRight: "0.9rem", marginBottom: "0.3rem", fontSize: "0.75rem" }}
+            >
+              {f.label}{" "}
+              <select
+                name={`source_${f.key}`}
+                defaultValue={fieldSourceOf(ctx, f.key)}
+                style={{ padding: "0.15rem", fontSize: "0.75rem" }}
+              >
+                <option value="woman_stated">woman-stated</option>
+                <option value="worker_observation">worker observation</option>
+              </select>
+            </label>
+          ))}
           <button type="submit">Save changes</button>
         </form>
       )}
@@ -171,12 +193,19 @@ export function ContextStage({
           <table>
             <tbody>
               {ctx &&
-                Object.entries(ctx).map(([k, v]) => (
-                  <tr key={k}>
-                    <th>{k}</th>
-                    <td>{typeof v === "object" ? JSON.stringify(v) : String(v)}</td>
-                  </tr>
-                ))}
+                Object.entries(ctx)
+                  .filter(([k]) => k !== "field_sources")
+                  .map(([k, v]) => (
+                    <tr key={k}>
+                      <th>{k}</th>
+                      <td>
+                        {typeof v === "object" ? JSON.stringify(v) : String(v)}{" "}
+                        <span style={{ color: "#888", fontSize: "0.7rem" }}>
+                          ({fieldSourceOf(ctx, k).replace(/_/g, " ")})
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
             </tbody>
           </table>
         </div>

@@ -11,8 +11,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../../db";
-import { caseContexts, cases, type CaseContext } from "../../../db/schema";
+import { caseContexts, cases, type CaseContext, type FieldSource } from "../../../db/schema";
 import { extractContextFromNotes } from "../../../lib/extraction";
+import { CONTEXT_FIELDS, fieldHasValue } from "../../../lib/context-fields";
 
 function fdStr(fd: FormData, key: string): string | null {
   const v = fd.get(key);
@@ -56,6 +57,15 @@ function contextFromFormData(fd: FormData): CaseContext {
     safe_contact_method: fdStr(fd, "safeContactMethod"),
     summary: fdStr(fd, "summary"),
   };
+
+  // Phase 5: worker-corrected tags for who stated each field (draft review form).
+  const field_sources: Record<string, FieldSource> = {};
+  for (const f of CONTEXT_FIELDS) {
+    if (!fieldHasValue(f.key, context)) continue;
+    field_sources[f.key] =
+      fdStr(fd, `source_${f.key}`) === "worker_observation" ? "worker_observation" : "woman_stated";
+  }
+  return { ...context, field_sources };
 }
 
 /** Save the raw notes on the case, run LLM extraction, insert a NEW draft version. */

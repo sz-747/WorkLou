@@ -8,7 +8,8 @@
  * parseExtraction is a pure function so the mapping is unit-testable
  * without the LLM.
  */
-import type { CaseContext } from "../db/schema";
+import type { CaseContext, FieldSource } from "../db/schema";
+import { CONTEXT_FIELDS, fieldHasValue } from "./context-fields";
 
 /** Initial needs taxonomy (implementation plan decision #3). */
 export const NEEDS_TAXONOMY = [
@@ -39,12 +40,16 @@ Return ONLY a JSON object (no prose, no markdown fences) with this exact shape:
   "urgency": "high" | "medium" | "low" | null,
   "safety_preferences": string | null,  // e.g. "No calls to main number"
   "safe_contact_method": string | null, // e.g. "sms", "email"
-  "summary": string | null      // one or two factual sentences from the notes only
+  "summary": string | null,     // one or two factual sentences from the notes only
+  "field_sources": object       // for EACH non-null field above: "woman_stated" or "worker_observation"
 }
 Rules:
 - Extract ONLY what the notes state. Use null for anything not mentioned. Never invent or guess.
 - needs values must be lowercase snake_case tokens from the taxonomy.
-- Keep it factual and brief.`;
+- Keep it factual and brief.
+- field_sources: "woman_stated" = the woman said it herself (e.g. her suburb, visa, languages,
+  children, pets, income, safety preferences, contact method); "worker_observation" = the
+  caseworker's own assessment or observation (e.g. urgency). Include ONLY non-null fields.`;
 
 function toSnakeCase(s: string): string {
   return s
@@ -106,7 +111,7 @@ export function parseExtraction(raw: string): CaseContext {
   const urgency = toStr(data.urgency)?.toLowerCase();
   const needs = toStringArray(data.needs);
 
-  return {
+  const context: CaseContext = {
     needs,
     suburb: toStr(data.suburb),
     catchment: toStr(data.catchment),
@@ -122,9 +127,23 @@ export function parseExtraction(raw: string): CaseContext {
       : null,
     summary: toStr(data.summary),
   };
+
+  // Phase 5: tag who stated each non-null field (default woman_stated).
+  const rawSources =
+    data.field_sources && typeof data.field_sources === "object"
+      ? (data.field_sources as Record<string, unknown>)
+      : {};
+  const field_sources: Record<string, FieldSource> = {};
+  for (const f of CONTEXT_FIELDS) {
+    if (!fieldHasValue(f.key, context)) continue;
+    field_sources[f.key] =
+      rawSources[f.key] === "worker_observation" ? "worker_observation" : "woman_stated";
+  }
+
+  return { ...context, field_sources };
 }
 
-function chatCompletionsUrl(base: string): string {
+export function chatCompletionsUrl(base: string): string {
   const trimmed = base.replace(/\/+$/, "");
   if (trimmed.endsWith("/chat/completions")) return trimmed;
   if (trimmed.endsWith("/v1")) return `${trimmed}/chat/completions`;

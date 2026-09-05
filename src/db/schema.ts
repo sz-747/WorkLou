@@ -16,6 +16,13 @@ import {
  * Follows docs/implementation_plan.md. Do not redesign without updating the plan.
  */
 
+/**
+ * Who stated a context field (Phase 5 Refer): the woman herself, or the
+ * caseworker's own observation/assessment. Tagged at extraction, editable
+ * by the worker during Context review.
+ */
+export type FieldSource = "woman_stated" | "worker_observation";
+
 /** Lightweight structured case context (see implementation_plan.md decisions #4). */
 export type CaseContext = {
   needs: string[];
@@ -30,6 +37,8 @@ export type CaseContext = {
   safety_preferences: string | null;
   safe_contact_method: string | null;
   summary: string | null;
+  /** per-field provenance: who stated each field (Phase 5). */
+  field_sources?: Record<string, FieldSource> | null;
 };
 
 export const services = pgTable(
@@ -135,6 +144,8 @@ export const referrals = pgTable(
       .notNull()
       .references(() => services.id),
     draftText: text("draft_text"),
+    /** which approved-context fields the worker chose to share (Phase 5) */
+    sharedFields: jsonb("shared_fields").$type<string[]>(),
     status: text("status").notNull().default("draft"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     followUpDue: date("follow_up_due"),

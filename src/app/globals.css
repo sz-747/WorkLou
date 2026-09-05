@@ -22,3 +22,4 @@ th { background: #f3f3f3; }
 .pill.stale { background: #ffedd5; }
 .pill.draft { background: #f1f5f9; }
 .pill.approved { background: #dcfce7; }
+.pill.sent { background: #dcfce7; }

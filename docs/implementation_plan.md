@@ -63,7 +63,7 @@ Matching (Phase 3) is plain SQL over typed rows: e.g. `attr_type='need' AND valu
 | id | uuid pk | |
 | case_id | uuid fk → cases | |
 | version | int | supersede rather than mutate |
-| context | jsonb | needs[], suburb/catchment, children, pets, income, visa, languages[], urgency, safety/preferences, safe_contact_method, short summary (gender dropped for now; refine with Lou's actual list later) |
+| context | jsonb | needs[], suburb/catchment, children, pets, income, visa, languages[], urgency, safety/preferences, safe_contact_method, short summary (gender dropped for now; refine with Lou's actual list later) + `field_sources` map (Phase 5): woman_stated / worker_observation per field, tagged at extraction, worker-editable at review |
 | status | text check | draft / approved |
 | extraction_model | text | provenance of the extraction |
 | approved_at | timestamptz | set when worker approves |
@@ -76,6 +76,7 @@ Matching (Phase 3) is plain SQL over typed rows: e.g. `attr_type='need' AND valu
 | context_id | uuid fk → case_contexts | the approved context used |
 | service_id | uuid fk → services | |
 | draft_text | text | generated, then worker-edited |
+| shared_fields | jsonb (string[]) | which approved-context fields the worker chose to share (Phase 5) |
 | status | text check | draft / approved / sent / responded / closed |
 | sent_at | timestamptz | worker marks sent — never automatic |
 | follow_up_due | date | |
