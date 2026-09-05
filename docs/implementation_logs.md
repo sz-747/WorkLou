@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-05 — Phase 1b: Minimal caseworker shell
+
+- Branch: `setup-branching-rules`
+- Changes: sparse app shell with nav (My Work / Women / Data check); `/` = My Work (case list, no metrics dashboard); `/women` = women/case list from DB; `/women/[id]` = case workspace loading case header, original notes, latest context version, referrals, and the five workflow stages (Context → Find support → Verify → Refer → Follow up + document) as stub sections; Phase 1 verification page moved to `/data`; no workflow logic built
+- DB changes: none (no schema changes)
+- Tests run: all routes curl-tested — `/`, `/women`, `/data`, `/women/[seeded id]` return 200, unknown id 404s; preview click-through My Work → Women → case workspace verified (case loads with client ref, draft context pill, all five stage sections; 0 console errors)
+- Result: pass — navigation, case loading, and DB-backed state proven; UI intentionally sparse
+- Known issues: one dev-only fix mid-build (`women/page.tsx` import path); none outstanding
+- Next phase: Phase 2 — Context (LLM extraction) — NOT started; awaiting user manual test of Phases 1/1b
+
 ## 2026-09-05 — Phase 1 fix: distinct provider-confirmed status
 
 - Branch: `setup-branching-rules`
