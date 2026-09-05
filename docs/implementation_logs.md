@@ -17,6 +17,15 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-06 — Base44 native scheduler bridge prepared
+- Branch: `project-status-overview`
+- Changes: added two thin Base44/Deno wrapper functions (`runWorkLouUpdater`, `runWorkLouDiscovery`) with inactive daily automation definitions, shared runtime code, and a Base44 handoff prompt. The wrappers call the existing Next routes so Postgres remains canonical and the business logic is not duplicated. Both machine-triggered routes now fail closed behind `SCHEDULER_SECRET`; the bounded discovery schedule uses `limit=1`. Local compose sidecars send the same bearer token with a development-only default.
+- DB changes: no schema changes. One authorized local scheduled updater smoke run completed and wrote its normal `updater_runs` record plus two review candidates; canonical service data was not auto-applied.
+- Tests run: focused updater suite 22/22; Base44 JSONC and `.base44/environment.json` parsed successfully; Docker Compose configuration validated; production build passed; live HTTP checks returned 401 for missing/wrong credentials and 200 for the correct token with updater status `completed`.
+- Result: pass locally. The supplied Base44 functions and schedules still require branch visibility, secret configuration, deployment, two manual Base44 runs, and activation inside Base44.
+- Known issues: Base44 GitHub sync normally reads `main`; the Base44 prompt must stop if it cannot access this feature branch. No live Bright Data discovery call was spent during the local bridge check.
+- Next phase: Base44-side deployment and manual-run verification; then activate both schedules.
+
 ## 2026-09-06 — Verify call-list reduction and Watershed fixture reconciliation
 - Branch: `project-status-overview`
 - Changes: backend Verify grouping now sends only reusable volatile questions to the provider call list: current wait time for every service and current capacity for accommodation. Durable profile gaps such as pets, languages, visa and income remain online-updater/admin data work, so multiple client languages cannot create duplicate call questions. Duplicate operational rows collapse to one question and any current answer wins over older stale copies. The existing screen structure is unchanged apart from accurate empty-state wording. Watershed's synthetic seed now agrees with its demo CSV: pets are `negotiable` (case-by-case) and the stale wait-time value is `2-3 weeks`. During the full regression run, `db:test` was also isolated from the mutable demo case by giving it its own temporary case/context; product behavior was unchanged.

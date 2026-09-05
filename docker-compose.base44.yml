@@ -39,6 +39,7 @@ services:
     environment:
       - DATABASE_URL=postgres://lou:lou_dev_only@db:5432/lousplace
       - BASE44_PUBLIC_HOST_SUFFIX=${BASE44_PUBLIC_HOST_SUFFIX}
+      - SCHEDULER_SECRET=${SCHEDULER_SECRET:-lou_scheduler_dev_only}
       - WATCHPACK_POLLING=true
     env_file:
       - path: /run/base44/app.env
@@ -61,7 +62,7 @@ services:
     command: >
       sh -c "sleep 180;
       while true; do
-        wget -q -O /dev/null --post-data='' 'http://web:3000/api/updater/run?trigger=scheduled' || true;
+        wget -q -O /dev/null --header='Authorization: Bearer ${SCHEDULER_SECRET:-lou_scheduler_dev_only}' --post-data='' 'http://web:3000/api/updater/run?trigger=scheduled' || true;
         sleep 3600;
       done"
 
@@ -74,7 +75,7 @@ services:
     command: >
       sh -c "sleep 300;
       while true; do
-        wget -q -O /dev/null --post-data='' 'http://web:3000/api/discovery/run?trigger=scheduled' || true;
+        wget -q -O /dev/null --header='Authorization: Bearer ${SCHEDULER_SECRET:-lou_scheduler_dev_only}' --post-data='' 'http://web:3000/api/discovery/run?trigger=scheduled&limit=1' || true;
         sleep 21600;
       done"
 

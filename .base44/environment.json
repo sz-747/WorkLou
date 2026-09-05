@@ -27,6 +27,16 @@
       "name": "BRIGHT_DATA_SERP_ZONE",
       "description": "Bright Data SERP API zone name (Web Scraper API → SERP API zone, e.g. serp_api1). Used for new-service discovery.",
       "requiredAtBoot": false
+    },
+    {
+      "name": "SCHEDULER_SECRET",
+      "description": "Shared bearer token used only by the Base44 scheduled functions when calling the updater and discovery routes.",
+      "requiredAtBoot": true
+    },
+    {
+      "name": "WORKLOU_APP_BASE_URL",
+      "description": "Published HTTPS base URL of this WorkLou app. Used by Base44 scheduled functions to call the protected job routes.",
+      "requiredAtBoot": false
     }
   ]
 }

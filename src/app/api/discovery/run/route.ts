@@ -5,10 +5,19 @@
  * into the canonical database — review/merge is a human decision.
  */
 import { runDiscovery } from "../../../../lib/discovery";
+import { authorizeSchedulerRequest } from "../../../../lib/scheduler-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const authorization = authorizeSchedulerRequest(request);
+  if (!authorization.ok) {
+    return Response.json(
+      { error: authorization.error },
+      { status: authorization.status },
+    );
+  }
+
   const url = new URL(request.url);
   const limitParam = Number(url.searchParams.get("limit"));
   const limit = Number.isInteger(limitParam) && limitParam > 0 ? limitParam : undefined;

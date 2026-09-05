@@ -1,0 +1,18 @@
+{
+  "name": "runWorkLouUpdater",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "type": "scheduled",
+      "name": "daily_worklou_updater",
+      "description": "Refreshes known WorkLou service facts once each day.",
+      "is_active": false,
+      "schedule_mode": "recurring",
+      "schedule_type": "simple",
+      "repeat_unit": "days",
+      "repeat_interval": 1,
+      "start_time": "20:00",
+      "ends_type": "never"
+    }
+  ]
+}

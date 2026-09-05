@@ -9,6 +9,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "./index";
 import { serviceAttributes, serviceChangeLog, services, updateCandidates, updaterRuns } from "./schema";
 import { FIXTURES } from "../lib/sources";
+import { authorizeSchedulerRequest } from "../lib/scheduler-auth";
 import {
   applyUpdateCandidate,
   rejectUpdateCandidate,
@@ -32,6 +33,26 @@ const TEST_SOURCE_URL = "https://test-updater.example.org/page";
 
 async function main() {
   console.log("Phase 7A — Existing-service updater tests");
+
+  console.log("[SCHEDULER AUTH] machine-triggered routes require the shared secret");
+  const scheduledRequest = new Request("http://localhost/api/updater/run", {
+    method: "POST",
+    headers: { authorization: "Bearer test-scheduler-secret" },
+  });
+  assert(
+    "correct scheduler token is accepted",
+    authorizeSchedulerRequest(scheduledRequest, "test-scheduler-secret").ok,
+  );
+  const wrongToken = authorizeSchedulerRequest(scheduledRequest, "different-secret");
+  assert(
+    "wrong scheduler token is rejected without running a job",
+    !wrongToken.ok && wrongToken.status === 401,
+  );
+  const missingSecret = authorizeSchedulerRequest(scheduledRequest, undefined);
+  assert(
+    "missing deployment secret fails closed",
+    !missingSecret.ok && missingSecret.status === 503,
+  );
 
   // deterministic source snapshot for the test service
   FIXTURES[TEST_SOURCE_URL] = {

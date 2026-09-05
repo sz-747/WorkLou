@@ -1,0 +1,18 @@
+{
+  "name": "runWorkLouDiscovery",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "type": "scheduled",
+      "name": "daily_worklou_discovery",
+      "description": "Searches for a small batch of new WorkLou service candidates once each day.",
+      "is_active": false,
+      "schedule_mode": "recurring",
+      "schedule_type": "simple",
+      "repeat_unit": "days",
+      "repeat_interval": 1,
+      "start_time": "20:15",
+      "ends_type": "never"
+    }
+  ]
+}

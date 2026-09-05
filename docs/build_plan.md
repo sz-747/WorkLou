@@ -28,7 +28,7 @@ One phase per workflow step. Each phase gets its own branch from latest `main`, 
 - **Demo data is synthetic** — 7 canonical services (5 seeded synthetic + Women's Housing Company merged from a live discovery candidate + Riverstone from the Excel demo import); the case ("Amira", CASE-2026-001) is synthetic.
 - **Updater sources are fixtures for the seeded services** (`src/lib/sources.ts`, example.org snapshots); non-fixture `https://` sources are direct-fetch only — a provider page that blocks fetching is logged as a source failure (no Web Unlocker in the demo).
 - **Discovery hits the live web** (Bright Data SERP) — candidates queue for human review; nothing auto-applies. Results vary run to run.
-- **Scheduling via compose cron sidecars** (updater hourly, discovery 6-hourly) — fine for demo; a real deployment should use a proper scheduler with auth on the endpoints.
+- **Scheduling bridge prepared, not yet activated in Base44** — local compose sidecars remain available; two native Base44 wrapper functions and inactive daily automation configs are ready for the Base44 manual-run check. Both HTTP routes require `SCHEDULER_SECRET`.
 - **Referral/follow-up "sent" is a DB state only** — the tool never transmits anything (by design; also a limitation if you expected integrations).
 - **Matching needs a full taxonomy alignment pass with Lou's actual service list** before production data entry.
 

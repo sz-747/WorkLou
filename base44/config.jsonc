@@ -1,0 +1,5 @@
+{
+  "name": "worklou-demo-automations",
+  "description": "Thin Base44 scheduling bridge for the WorkLou demo backend.",
+  "functionsDir": "./functions"
+}
