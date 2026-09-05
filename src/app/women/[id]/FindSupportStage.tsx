@@ -33,7 +33,14 @@ function StatusPill({ status }: { status: string }) {
             : status === "not_recorded"
               ? ""
               : "verified";
-  return <span className={`pill ${cls}`}>{status.replace(/_/g, " ")}</span>;
+  const label: Record<string, string> = {
+    matched: "fits",
+    needs_provider_confirmation: "ask provider",
+    stale: "check again",
+    mismatch: "may not fit",
+    not_recorded: "not recorded",
+  };
+  return <span className={`pill ${cls}`}>{label[status] ?? status.replace(/_/g, " ")}</span>;
 }
 
 function freshnessLine(fact: NonNullable<MatchResult["criteria"][number]["fact"]>): string {
@@ -69,10 +76,7 @@ export function FindSupportStage({
 }) {
   if (!approved) {
     return (
-      <p style={{ fontSize: "0.85rem" }}>
-        No approved context yet — approve a context in stage 1 first. Matching never runs against
-        drafts.
-      </p>
+      <p className="muted">Approve the case summary first. Suitable services will appear here.</p>
     );
   }
 
@@ -82,43 +86,45 @@ export function FindSupportStage({
 
   return (
     <>
-      <p style={{ fontSize: "0.85rem", margin: "0.25rem 0" }}>
-        Matched from approved Context v{approved.version} (approved{" "}
-        {approved.approvedAt ? new Date(approved.approvedAt).toLocaleDateString("en-AU") : "—"}) —
-        deterministic query, no AI ranking. Client needs:{" "}
-        <strong>{ctx.needs.join(", ")}</strong>
+      <p style={{ margin: "0.25rem 0" }}>
+        Looking for <strong>{ctx.needs.join(", ")}</strong>
         {ctx.children?.count ? `, ${ctx.children.count} child(ren)` : ""}
         {ctx.pets?.has_pet ? ", pet" : ""}
-        {ctx.visa ? `, visa: ${ctx.visa}` : ""}
-        {ctx.languages.length ? `, languages: ${ctx.languages.join(", ")}` : ""}.
+        {ctx.languages.length ? `, ${ctx.languages.join(", ")}` : ""}.
       </p>
+      <details className="technical-details">
+        <summary>How this shortlist was made</summary>
+        <p className="muted">
+          It uses approved summary version {approved.version} and stored service facts. No AI ranks the services.
+          {approved.approvedAt ? ` Summary approved ${new Date(approved.approvedAt).toLocaleDateString("en-AU")}.` : ""}
+        </p>
+      </details>
 
       {suitable.length === 0 && (
         <p style={{ fontSize: "0.85rem" }}>No suitable services found for this context.</p>
       )}
 
       {suitable.map((r) => (
-        <div key={r.service.id} style={{ border: "1px solid #ddd", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
-          <h4 style={{ margin: "0.25rem 0" }}>
-            {r.service.name}{" "}
-            <span style={{ fontSize: "0.75rem", color: "#888" }}>
-              · {r.matchedNeeds.length} need(s) matched · {r.service.organisation ?? ""}
-              {r.service.phone ? ` · ${r.service.phone}` : ""}
-              {r.service.catchment ? ` · catchment: ${r.service.catchment}` : ""}
-            </span>
-          </h4>
-          <ul style={{ margin: "0.25rem 0", paddingLeft: "1.25rem" }}>
-            {r.criteria.map((c) => (
-              <CriterionRow key={c.criterion} c={c} />
-            ))}
-          </ul>
+        <div key={r.service.id} className="support-card">
+          <h4>{r.service.name}</h4>
+          <p>{r.service.organisation ?? "Provider organisation not recorded"}{r.service.phone ? ` · ${r.service.phone}` : ""}</p>
+          <p><strong>Matches:</strong> {r.matchedNeeds.join(", ")}</p>
+          {r.criteria.some((criterion) => criterion.status !== "matched") ? (
+            <p className="action-note">There are {r.criteria.filter((criterion) => criterion.status !== "matched").length} details to notice or confirm.</p>
+          ) : null}
+          <details className="technical-details">
+            <summary>Why it fits and what still needs checking</summary>
+            <ul className="plain-list">
+              {r.criteria.map((criterion) => <CriterionRow key={criterion.criterion} c={criterion} />)}
+            </ul>
+          </details>
         </div>
       ))}
 
       {notSuitable.length > 0 && (
         <details style={{ margin: "0.5rem 0" }}>
           <summary style={{ fontSize: "0.85rem", cursor: "pointer" }}>
-            Not suitable ({notSuitable.length})
+            Other services ruled out ({notSuitable.length})
           </summary>
           <ul style={{ paddingLeft: "1.25rem" }}>
             {notSuitable.map((r) => (

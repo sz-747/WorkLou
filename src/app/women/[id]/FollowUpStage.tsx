@@ -40,7 +40,7 @@ function FollowUpCard({
   const latestDraft = [...events].reverse().find((e) => e.kind === "follow_up_draft");
 
   return (
-    <div style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
+    <div className="support-card">
       <h4 style={{ margin: "0.25rem 0" }}>
         {referral.serviceName}{" "}
         <span className={`pill ${referral.status === "sent" ? "sent" : referral.status}`}>
@@ -60,18 +60,18 @@ function FollowUpCard({
         )}
       </p>
 
-      <h5 style={{ margin: "0.5rem 0 0.2rem", fontSize: "0.85rem" }}>Timeline</h5>
-      <ol style={{ margin: "0.2rem 0", paddingLeft: "1.2rem", fontSize: "0.85rem" }}>
-        <li>
-          <strong>Referral sent</strong> — {fmtDateTime(referral.sentAt)}
-        </li>
-        {events.map((e) => (
-          <li key={e.id}>
-            <strong>{EVENT_LABELS[e.kind] ?? e.kind}</strong> — {fmtDateTime(e.occurredAt)}
-            <div style={{ whiteSpace: "pre-wrap", fontSize: "0.8rem", color: "#444" }}>{e.note}</div>
-          </li>
-        ))}
-      </ol>
+      <details className="technical-details">
+        <summary>Referral history ({events.length + 1})</summary>
+        <ol style={{ margin: "0.4rem 0", paddingLeft: "1.2rem", fontSize: "0.85rem" }}>
+          <li><strong>Referral sent</strong> — {fmtDateTime(referral.sentAt)}</li>
+          {events.map((event) => (
+            <li key={event.id}>
+              <strong>{EVENT_LABELS[event.kind] ?? event.kind}</strong> — {fmtDateTime(event.occurredAt)}
+              <div style={{ whiteSpace: "pre-wrap", fontSize: "0.8rem", color: "#444" }}>{event.note}</div>
+            </li>
+          ))}
+        </ol>
+      </details>
 
       {open ? (
         <>
@@ -88,9 +88,6 @@ function FollowUpCard({
               />
             </label>
             <button type="submit">Save response</button>
-            <span style={{ fontSize: "0.7rem", color: "#888", marginLeft: "0.5rem" }}>
-              Moves the referral to responded; appears on the timeline.
-            </span>
           </form>
 
           <form action={recordOutcomeAction} style={{ margin: "0.5rem 0" }}>
@@ -113,26 +110,18 @@ function FollowUpCard({
               style={{ padding: "0.25rem", width: "16rem" }}
             />{" "}
             <button type="submit">Record outcome</button>
-            <p style={{ fontSize: "0.7rem", color: "#888", margin: "0.25rem 0" }}>
-              Awaiting reply keeps the referral open; the others close it. &quot;Support
-              received&quot; marks support actually delivered — distinct from a referral merely
-              sent or accepted.
-            </p>
+            <p className="muted">Accepted stays open. Choose Support received only when help has actually started.</p>
           </form>
 
           <form action={draftFollowUp} style={{ margin: "0.5rem 0" }}>
             <input type="hidden" name="caseId" value={caseId} />
             <input type="hidden" name="referralId" value={referral.id} />
             <button type="submit">Draft follow-up message</button>
-            <span style={{ fontSize: "0.7rem", color: "#888", marginLeft: "0.5rem" }}>
-              Drafts a follow-up for your review — nothing is sent automatically.
-            </span>
+            <span className="muted" style={{ marginLeft: "0.5rem" }}>Review and send it yourself.</span>
           </form>
           {latestDraft && (
             <div style={{ background: "#f8fafc", padding: "0.5rem", margin: "0.25rem 0" }}>
-              <p style={{ fontSize: "0.75rem", margin: "0.1rem 0", color: "#666" }}>
-                Latest follow-up draft — review, copy, and send it yourself:
-              </p>
+              <p className="muted">Latest follow-up draft:</p>
               <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", margin: 0 }}>
                 {latestDraft.note}
               </pre>
@@ -140,9 +129,7 @@ function FollowUpCard({
           )}
         </>
       ) : (
-        <p style={{ fontSize: "0.75rem", color: "#888" }}>
-          Closed — outcome recorded {fmtDate(referral.outcomeAt)}. Timeline is read-only.
-        </p>
+        <p className="muted">Finished {fmtDate(referral.outcomeAt)}. The referral history is kept above.</p>
       )}
     </div>
   );
@@ -167,9 +154,7 @@ export function FollowUpStage({
         <p style={{ color: "#b91c1c", fontSize: "0.85rem" }}>Follow-up error: {followUpError}</p>
       )}
       {sentReferrals.length === 0 && (
-        <p style={{ fontSize: "0.85rem" }}>
-          No sent referrals to follow up yet — mark a referral as sent in stage 4.
-        </p>
+        <p className="muted">Sent referrals and their next actions will appear here.</p>
       )}
       {sentReferrals.map((r) => (
         <FollowUpCard

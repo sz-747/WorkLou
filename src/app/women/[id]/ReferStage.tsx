@@ -47,18 +47,27 @@ function ShareRow({ field, ctx }: { field: ContextFieldDef; ctx: CaseContext }) 
   );
 }
 
-function ReferralCard({ caseId, referral }: { caseId: string; referral: ReferralRow }) {
+function ReferralCard({
+  caseId,
+  referral,
+  urgency,
+}: {
+  caseId: string;
+  referral: ReferralRow;
+  urgency: string | null;
+}) {
   return (
-    <div style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
+    <div className="support-card">
       <h4 style={{ margin: "0.25rem 0" }}>
         {referral.serviceName}{" "}
         <span className={`pill ${referral.status === "sent" ? "sent" : "draft"}`}>
           {referral.status}
         </span>
       </h4>
-      <p style={{ fontSize: "0.75rem", color: "#888", margin: "0.1rem 0" }}>
-        shared: {referral.sharedFields?.join(", ") || "—"}
-      </p>
+      <details className="technical-details">
+        <summary>Information included in this referral</summary>
+        <p>{referral.sharedFields?.join(", ") || "No fields recorded"}</p>
+      </details>
 
       {referral.status === "draft" ? (
         <>
@@ -72,9 +81,7 @@ function ReferralCard({ caseId, referral }: { caseId: string; referral: Referral
               style={{ width: "100%", padding: "0.3rem", fontFamily: "inherit", fontSize: "0.9rem" }}
             />
             <button type="submit">Save changes</button>
-            <span style={{ fontSize: "0.7rem", color: "#888", marginLeft: "0.5rem" }}>
-              Draft — review and edit before marking sent.
-            </span>
+            <span className="muted" style={{ marginLeft: "0.5rem" }}>Check the wording before marking it sent.</span>
           </form>
           <form action={markSent} style={{ marginTop: "0.5rem" }}>
             <input type="hidden" name="caseId" value={caseId} />
@@ -84,25 +91,23 @@ function ReferralCard({ caseId, referral }: { caseId: string; referral: Referral
               <input
                 type="date"
                 name="followUpDue"
-                defaultValue={defaultFollowUpDate()}
+                defaultValue={defaultFollowUpDate(new Date(), urgency)}
                 style={{ padding: "0.2rem", marginLeft: "0.3rem" }}
               />
             </label>{" "}
             <button type="submit">Mark as sent</button>
-            <p style={{ fontSize: "0.7rem", color: "#888", margin: "0.25rem 0" }}>
-              Demo only — nothing is transmitted. Records the referral as sent with the follow-up
-              date.
-            </p>
+            <p className="action-note">This demo records that you sent the referral. It does not email the provider.</p>
           </form>
         </>
       ) : (
         <>
-          <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", margin: "0.5rem 0" }}>
-            {referral.draftText}
-          </pre>
           <p style={{ fontSize: "0.8rem", margin: "0.25rem 0" }}>
             Sent {fmtDateTime(referral.sentAt)} · Follow-up due {referral.followUpDue ?? "—"}
           </p>
+          <details className="technical-details">
+            <summary>View the sent referral</summary>
+            <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem" }}>{referral.draftText}</pre>
+          </details>
         </>
       )}
     </div>
@@ -135,6 +140,8 @@ export function ReferStage({
   const workerObservations = CONTEXT_FIELDS.filter(
     (f) => fieldSourceOf(ctx, f.key) === "worker_observation",
   );
+  const coreWomanStated = womanStated.filter((field) => field.core);
+  const additionalWomanStated = womanStated.filter((field) => !field.core);
 
   return (
     <>
@@ -145,7 +152,7 @@ export function ReferStage({
       <form action={generateReferralDraft} style={{ margin: "0.5rem 0" }}>
         <input type="hidden" name="caseId" value={caseId} />
         <label style={{ fontSize: "0.85rem", display: "block", margin: "0.3rem 0" }}>
-          Refer to{" "}
+          <strong>Refer to</strong>{" "}
           <select name="serviceId" style={{ padding: "0.25rem", marginLeft: "0.3rem" }}>
             {suitable.map((s) => (
               <option key={s.id} value={s.id}>
@@ -154,33 +161,27 @@ export function ReferStage({
             ))}
           </select>
         </label>
-        <p style={{ fontSize: "0.75rem", color: "#888", margin: "0.2rem 0" }}>
-          Only services suitable in Find support (stage 2) are offered.
-        </p>
-
-        <h4 style={{ margin: "0.5rem 0 0.2rem", fontSize: "0.9rem" }}>
-          Information to share — woman-stated
-        </h4>
-        {womanStated.map((f) => (
+        <h4 style={{ margin: "0.8rem 0 0.2rem", fontSize: "0.9rem" }}>Information she has agreed to share</h4>
+        {coreWomanStated.map((f) => (
           <ShareRow key={f.key} field={f} ctx={ctx} />
         ))}
-
-        <h4 style={{ margin: "0.5rem 0 0.2rem", fontSize: "0.9rem" }}>Worker observations</h4>
-        {workerObservations.map((f) => (
-          <ShareRow key={f.key} field={f} ctx={ctx} />
-        ))}
-
-        <p style={{ fontSize: "0.75rem", color: "#888", margin: "0.3rem 0" }}>
-          The minimal set is pre-selected; untick anything the woman does not want shared. The draft
-          is built only from the ticked items and stored service facts.
-        </p>
-        <button type="submit">Generate referral draft</button>
+        <details className="technical-details">
+          <summary>Additional details you may choose to share</summary>
+          {additionalWomanStated.map((f) => <ShareRow key={f.key} field={f} ctx={ctx} />)}
+        </details>
+        <details className="technical-details">
+          <summary>Your observations</summary>
+          <p className="muted">These stay separate from what the woman said.</p>
+          {workerObservations.map((f) => <ShareRow key={f.key} field={f} ctx={ctx} />)}
+        </details>
+        <p className="muted">Untick anything she does not want shared.</p>
+        <button type="submit">Create referral draft</button>
       </form>
 
       <h4 style={{ margin: "0.75rem 0 0.25rem" }}>Referrals</h4>
       {referrals.length === 0 && <p style={{ fontSize: "0.85rem" }}>No referrals yet.</p>}
       {referrals.map((r) => (
-        <ReferralCard key={r.id} caseId={caseId} referral={r} />
+        <ReferralCard key={r.id} caseId={caseId} referral={r} urgency={ctx.urgency} />
       ))}
     </>
   );
