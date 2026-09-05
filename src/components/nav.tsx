@@ -7,9 +7,24 @@ import { usePathname } from "next/navigation";
  * Shared shell. Caseworker routes (/ and /women…) get the scoped A2 pill
  * styling; /admin and /data keep the original globals.css appearance.
  */
+/** Routes that render the A2 design shell and supply their own chrome. */
+const A2_ROUTES = [
+  "/today",
+  "/clients",
+  "/shelters",
+  "/plans",
+  "/letters",
+  "/follow-ups",
+  "/working",
+  "/done",
+  "/states",
+];
+
 export function Nav() {
   const pathname = usePathname() ?? "/";
   const isCaseworker = pathname === "/" || pathname.startsWith("/women");
+
+  if (A2_ROUTES.some((route) => pathname.startsWith(route))) return null;
 
   return (
     <nav
