@@ -59,4 +59,10 @@ As caseworkers use the tool, the service database accumulates verified, fresh, p
 
 ## Status
 
-- See `docs/build_plan.md` for phase statuses.
+- **Complete**: all phases built and verified — see `docs/build_plan.md` (all phases COMPLETE, plus known limitations and recommended next steps).
+- **How to run the demo**: `docs/demo_walkthrough.md` (caseworker five-step flow on the synthetic case, plus admin demo paths).
+- **Schema + workflow detail**: `docs/implementation_plan.md`.
+
+## Known limitations (hackathon build)
+
+No auth; minimal (functional) UX; synthetic demo data; updater runs on fixture snapshots for seeded services (direct-fetch only otherwise — blocked provider pages log as source failures); discovery hits the live web and queues for human review; scheduling via compose cron sidecars; nothing is ever transmitted to providers; matching taxonomy needs alignment with Lou's actual service list before real data entry. See `docs/build_plan.md` for the full list and recommended next steps.

@@ -9,7 +9,7 @@
 
 ## Proposed Postgres schema (simplest that supports the demo and future migration)
 
-> **Status: IMPLEMENTED in Phase 1** — Drizzle schema in `src/db/schema.ts`, pushed via `drizzle-kit push`, seeded by `src/db/seed.ts`, tested by `src/db/test.ts` (21/21 pass).
+> **Status: IMPLEMENTED in Phase 1, unchanged through final hardening** — Drizzle schema in `src/db/schema.ts`, pushed via `drizzle-kit push`, seeded by `src/db/seed.ts`, tested by `src/db/test.ts` (22/22; all 12 suites / 249 assertions green as of 2026-09-06).
 
 Core idea: `services` + `service_attributes` (structured facts, each carrying provenance/freshness) keep service knowledge; `cases` + `case_contexts` keep lightweight case context; `referrals` + `case_documents` keep activity and outputs; `discovery_candidates` supports process B.
 
@@ -160,3 +160,12 @@ Upload → parse (RFC4180-ish CSV parser: quoted fields, doubled quotes, embedde
 4. **Case-context fields:** needs, suburb/catchment, children, pets, income, visa, languages, urgency, safety/preferences, safe-contact method, short summary. Gender dropped for now.
 5. **Auth:** none — single caseworker for the hackathon.
 6. **Bright Data integration (decided 2026-09-05, replacing the same-day original choice):** one small replaceable adapter (`src/lib/brightdata.ts`) over Bright Data's unified `POST api.brightdata.com/request` endpoint with Bearer auth — SERP API for discovering new services. **Updated 2026-09-05:** the Web Unlocker fallback for fetching blocked provider pages was removed from the demo environment (production-only concern; failed direct fetches are recorded as source failures). No Web Scraper Dataset API / `BRIGHT_DATA_DATASET_ID` dependency. Required env: `BRIGHT_DATA_API_KEY`, `BRIGHT_DATA_SERP_ZONE`.
+
+## Final state (hardening pass, 2026-09-06)
+
+- **Full five-step flow re-run live from fresh state** (context → find support → verify → refer → follow up → document) with DB writes inspected in Postgres at every stage; the demo DB again holds exactly the documented end-state (`docs/demo_walkthrough.md`): 1 approved context with `field_sources` intact, Watershed pets provider-confirmed (welcome), 1 closed referral (outcome `support_received`), 3 referral events, 1 approved case note. Stage 6 of that run was driven through the exact lib functions the server action wraps (same code path).
+- **All 12 regression suites green — 249 assertions** (`npm run db:test*`, run sequentially). Suites are now robust against the live demo end-state: `src/db/test.ts` creates its own confirmation fact (no longer relies on/mutates the seeded Watershed pets fact), and `src/db/test:matching` accepts demo-added services and the provider-confirmed pets state.
+- **Admin corrections → caseworker propagation verified live** (provider confirmation of Watershed pets immediately surfaces in Find support as "Caseworker — phone confirmed …").
+- **Updater + discovery demo paths verified live 2026-09-06** (idempotent; failures logged, never corrupt data). Excel import path green (34/34) with the demo batch staged (2 imported / 3 discarded).
+- **Audits:** no transmission code anywhere (no email/SMS/HTTP-to-provider); LLM only extracts/drafts for human review from stored facts; all fixtures synthetic (`example.org`).
+- **Dead code removed:** `src/db/backfill-field-sources.ts` (one-time backfill, long done), `src/db/demo-followup.ts` (superseded by the real flow), `db:backfill-sources` npm script.
