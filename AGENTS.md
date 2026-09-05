@@ -26,7 +26,7 @@ These rules apply to every new branch/session on this repository. Follow them ex
 ## Project commands (Lou's Place casework tool)
 
 - Start stack: `docker compose -f docker-compose.base44.yml up -d` (db + one-shot setup [npm install → drizzle-kit push → seed, idempotent] + web on port 3000)
-- DB tests: `docker compose -f docker-compose.base44.yml exec -T web npm run db:test` (creates + cleans up its own rows)
+- DB tests: `docker compose -f docker-compose.base44.yml exec -T web npm run db:test` (creates + cleans up its own rows). Suites under `src/db/test*.ts` share one database — always run them sequentially, never in parallel (a parallel run once raced and left stray rows + FK errors).
 - Fresh seed: `docker compose -f docker-compose.base44.yml exec -T web npm run db:seed` (skips if already seeded)
 - Direct DB: `docker compose -f docker-compose.base44.yml exec db psql -U lou -d lousplace`; Postgres is also exposed on host port 5432 (dev-only creds: lou / lou_dev_only, db lousplace)
 - `drizzle-kit push` (not generate/migrate) keeps the DB in sync — schema source of truth is `src/db/schema.ts`

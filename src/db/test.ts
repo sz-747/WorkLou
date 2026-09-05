@@ -59,7 +59,14 @@ async function main() {
     })
     .returning();
 
-  const [seededCase] = await db.select().from(cases).limit(1);
+  // Target the seeded demo case explicitly — never an arbitrary row, so a
+  // concurrently-created test case (other suites create/delete their own cases)
+  // can never be picked and vanish before the case_documents insert below.
+  const [seededCase] = await db
+    .select()
+    .from(cases)
+    .where(eq(cases.clientRef, "CASE-2026-001"))
+    .limit(1);
   assert("seeded case exists", !!seededCase);
 
   const [approvedContext] = await db
