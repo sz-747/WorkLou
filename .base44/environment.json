@@ -1,0 +1,22 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "LLM_API_KEY",
+      "description": "Optional. API key for an OpenAI-compatible endpoint (e.g. OpenAI, OpenRouter). Powers natural-language query parsing and source extraction; without it a local keyword parser and rule-based extraction are used.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "LLM_BASE_URL",
+      "description": "Optional. Base URL of the OpenAI-compatible endpoint, e.g. https://api.openai.com/v1",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "LLM_MODEL",
+      "description": "Optional. Model name, e.g. gpt-4o-mini",
+      "requiredAtBoot": false
+    }
+  ]
+}

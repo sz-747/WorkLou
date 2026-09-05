@@ -17,4 +17,20 @@ Skill precedence: concise-chat governs all output style; the other three trigger
 
 ## Project context
 
-This repo hosts the Lou's Place referral navigation tool MVP (Next.js + PostgreSQL, provider-neutral LLM adapter). No application code exists yet — the product plan was approved in chat on 2026-09-05.
+This repo hosts the Lou's Place Referral Navigator MVP (Next.js App Router + PostgreSQL, provider-neutral LLM adapter). Product definition lives in `product.md`.
+
+## How to run
+
+`docker compose -f docker-compose.base44.yml up -d` — starts Postgres (schema + demo seed in `db/init.sql`), Next.js dev server on port 3000, and a scheduler that triggers verification every 6h. No secrets required: without LLM keys a local keyword parser (`lib/parse.ts`) and rule-based extraction (`lib/extract.ts`) are used; `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` switch those to an OpenAI-compatible provider.
+
+## Verify it works
+
+- `curl -X POST localhost:3000/api/search -H 'Content-Type: application/json' -d '{"query":"Emergency accommodation tonight for a woman with two children near Redfern."}'` — should parse criteria and return Redfern/Waterloo refuges.
+- `curl -X POST localhost:3000/api/verification/run` — verifies services against fixtures; differences become pending changes.
+- `curl -X POST localhost:3000/api/eval/search` and `.../api/eval/verification` — real measured metrics (never hard-coded).
+
+## Quirks
+
+- DB seed runs only on a fresh volume: `docker compose down -v` to re-seed after changing `db/init.sql`.
+- Local source fixtures (`source_fixtures` table) stand in for official service pages so verification is deterministic; real `source_url`s are fetched only when no fixture exists.
+- `normHeader` in `app/api/import/route.ts` strips ALL non-alphanumerics from CSV headers — HEADER_MAP keys must be lowercase-alphanumeric (no underscores/spaces).
