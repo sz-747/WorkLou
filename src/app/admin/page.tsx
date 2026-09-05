@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { getDiscoveryCandidates, getServicesOverview } from "../../lib/admin";
 import { getUpdateCandidates, getUpdaterRuns } from "../../lib/updater";
+import { getStagedRows } from "../../lib/spreadsheet";
 import {
   approveCandidate,
   approveDiscoveryAction,
@@ -16,6 +17,7 @@ import {
   runDiscoveryAction,
   runUpdaterAction,
 } from "./actions";
+import { discardStagedAction, importStagedAction, uploadSpreadsheetAction } from "./spreadsheet-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -126,14 +128,24 @@ export default async function AdminServices({
     updaterError?: string;
     discoveryMsg?: string;
     discoveryError?: string;
+    spreadsheetMsg?: string;
+    spreadsheetError?: string;
   }>;
 }) {
-  const { updaterMsg, updaterError, discoveryMsg, discoveryError } = await searchParams;
-  const [overview, candidates, runs, updateCands] = await Promise.all([
+  const {
+    updaterMsg,
+    updaterError,
+    discoveryMsg,
+    discoveryError,
+    spreadsheetMsg,
+    spreadsheetError,
+  } = await searchParams;
+  const [overview, candidates, runs, updateCands, staged] = await Promise.all([
     getServicesOverview(),
     getDiscoveryCandidates(),
     getUpdaterRuns(),
     getUpdateCandidates(),
+    getStagedRows(),
   ]);
 
   return (
@@ -148,6 +160,119 @@ export default async function AdminServices({
       {updaterError && <p style={{ color: "#b91c1c", fontSize: "0.85rem" }}>Updater error: {updaterError}</p>}
       {discoveryMsg && <p style={{ color: "#15803d", fontSize: "0.85rem" }}>{discoveryMsg}</p>}
       {discoveryError && <p style={{ color: "#b91c1c", fontSize: "0.85rem" }}>Discovery error: {discoveryError}</p>}
+      {spreadsheetMsg && <p style={{ color: "#15803d", fontSize: "0.85rem" }}>{spreadsheetMsg}</p>}
+      {spreadsheetError && <p style={{ color: "#b91c1c", fontSize: "0.85rem" }}>Spreadsheet error: {spreadsheetError}</p>}
+
+      {/* --- Phase 8: spreadsheet migration (staging) --- */}
+      <h2>Spreadsheet migration (staging)</h2>
+      <p style={{ fontSize: "0.8rem" }}>
+        Lou&apos;s existing service list (CSV — Excel&apos;s &quot;Save as CSV&quot;) stages here
+        first: original values are kept verbatim, then each row is matched against the
+        canonical directory. Importing is human-controlled and{" "}
+        <strong>non-destructive</strong>: new rows create services; matched rows only fill{" "}
+        <em>empty</em> fields and add missing need facts — existing values are never
+        overwritten. Export the canonical directory back to CSV any time:
+      </p>
+      <form action={uploadSpreadsheetAction} style={{ margin: "0.4rem 0", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <input type="file" name="file" accept=".csv,text/csv" required style={{ fontSize: "0.85rem" }} />
+        <input name="importedBy" placeholder="your name" style={inputStyle} required />
+        <button type="submit">Upload &amp; stage</button>
+        <a href="/api/services/export" style={{ fontSize: "0.85rem" }}>
+          Download canonical directory (CSV)
+        </a>
+      </form>
+      {staged.length === 0 ? (
+        <p style={{ fontSize: "0.85rem" }}>No staged spreadsheet rows yet.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Row</th>
+              <th>Service name</th>
+              <th>Mapped fields</th>
+              <th>Match</th>
+              <th>Status</th>
+              <th>Decide</th>
+              <th>Original row</th>
+            </tr>
+          </thead>
+          <tbody>
+            {staged.map((r) => (
+              <tr key={r.id}>
+                <td style={{ fontSize: "0.75rem" }}>{r.importFilename}</td>
+                <td>{r.rowNumber}</td>
+                <td>
+                  <strong>{r.name}</strong>
+                </td>
+                <td style={{ fontSize: "0.75rem" }}>
+                  {[
+                    r.phone && `☎ ${r.phone}`,
+                    r.email && `✉ ${r.email}`,
+                    r.website && `🌐 ${r.website}`,
+                    r.address && `📍 ${r.address}`,
+                    r.catchment && `area: ${r.catchment}`,
+                    r.needs.length > 0 && `needs: ${r.needs.join(", ")}`,
+                  ]
+                    .filter(Boolean)
+                    .map((f, i) => (
+                      <div key={i}>{f}</div>
+                    ))}
+                </td>
+                <td style={{ fontSize: "0.8rem" }}>
+                  {r.matchStatus === "matched" ? (
+                    r.matchedServiceId ? (
+                      <Link href={`/admin/services/${r.matchedServiceId}`}>existing service</Link>
+                    ) : (
+                      "existing (deleted)"
+                    )
+                  ) : (
+                    <span className="pill">new</span>
+                  )}
+                </td>
+                <td>
+                  <span className="pill">{r.status}</span>
+                  {r.decidedBy ? (
+                    <span style={{ fontSize: "0.7rem", color: "#666" }}> by {r.decidedBy}</span>
+                  ) : null}
+                  {r.outcome && (
+                    <div style={{ fontSize: "0.7rem", color: "#444" }}>
+                      {r.outcome.mode === "created" ? "service created" : `${r.outcome.filled.length} filled / ${r.outcome.skipped.length} kept`}
+                      {r.outcome.addedNeeds.length > 0 ? ` · +${r.outcome.addedNeeds.join(", ")}` : ""}
+                    </div>
+                  )}
+                </td>
+                <td>
+                  {r.status === "staged" ? (
+                    <form action={importStagedAction} style={{ display: "flex", gap: "0.3rem", alignItems: "center" }}>
+                      <input type="hidden" name="stagedId" value={r.id} />
+                      <input name="importedBy" placeholder="your name" style={{ ...inputStyle, width: "6.5rem" }} required />
+                      <button type="submit" title="Create/fill canonical data — existing values are never overwritten">Import</button>
+                      <button type="submit" formAction={discardStagedAction} title="Discard — canonical data untouched">
+                        Discard
+                      </button>
+                    </form>
+                  ) : (
+                    <span style={{ fontSize: "0.75rem", color: "#666" }}>decided</span>
+                  )}
+                </td>
+                <td style={{ fontSize: "0.7rem" }}>
+                  <details>
+                    <summary>verbatim</summary>
+                    <ul style={{ paddingLeft: "1rem", margin: "0.2rem 0" }}>
+                      {Object.entries(r.rawValues).map(([h, v]) => (
+                        <li key={h}>
+                          <em>{h}:</em> {v || "—"}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       {/* --- Phase 7A: existing-service updater --- */}
       <h2>Existing-service updater</h2>

@@ -214,6 +214,68 @@ export const updateCandidates = pgTable(
   ],
 );
 
+/**
+ * Phase 8 — Excel migration compatibility: staging layer.
+ * Lou's existing spreadsheet lands here VERBATIM first (one staged row per
+ * spreadsheet line, original values preserved in raw_values). Nothing
+ * touches canonical services until a human imports a staged row — the
+ * import is non-destructive (it only fills gaps, never overwrites).
+ */
+export const spreadsheetImports = pgTable("spreadsheet_imports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  filename: text("filename").notNull(),
+  importedBy: text("imported_by").notNull(),
+  importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
+  rowCount: integer("row_count").notNull(),
+});
+
+/**
+ * One staged spreadsheet row. `rawValues` keeps every original cell
+ * verbatim (header → original text, incl. unmapped columns); the typed
+ * columns hold the mapped canonical view. matchStatus says whether the
+ * row matched an existing canonical service (by normalised name) at
+ * staging time; outcome records what an import actually did.
+ */
+export const stagedServices = pgTable(
+  "staged_services",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    importId: uuid("import_id")
+      .notNull()
+      .references(() => spreadsheetImports.id, { onDelete: "cascade" }),
+    rowNumber: integer("row_number").notNull(),
+    rawValues: jsonb("raw_values").$type<Record<string, string>>().notNull(),
+    name: text("name").notNull(),
+    organisation: text("organisation"),
+    description: text("description"),
+    website: text("website"),
+    phone: text("phone"),
+    email: text("email"),
+    address: text("address"),
+    catchment: text("catchment"),
+    needs: jsonb("needs").$type<string[]>().notNull().default([]),
+    matchStatus: text("match_status").notNull(),
+    /** plain reference — staged rows survive canonical-service deletion */
+    matchedServiceId: uuid("matched_service_id"),
+    status: text("status").notNull().default("staged"),
+    /** what the import did: fields filled / skipped (with current value) / needs added */
+    outcome: jsonb("outcome").$type<{
+      mode: "created" | "merged";
+      filled: string[];
+      skipped: { field: string; current: string }[];
+      addedNeeds: string[];
+    }>(),
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("staged_services_match_status_check", sql`${t.matchStatus} in ('new','matched')`),
+    check("staged_services_status_check", sql`${t.status} in ('staged','imported','discarded')`),
+    index("staged_services_import_idx").on(t.importId, t.rowNumber),
+  ],
+);
+
 export const cases = pgTable("cases", {
   id: uuid("id").defaultRandom().primaryKey(),
   clientRef: text("client_ref").notNull(),
