@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-05 — Phase 2: Context (notes → draft → review → approve)
+
+- Branch: `setup-branching-rules`
+- Changes: Context stage built out in the case workspace (`src/app/women/[id]/ContextStage.tsx` + server actions `src/app/women/[id]/actions.ts`): notes form saves raw notes on the case and runs LLM extraction (`src/lib/extraction.ts` — OpenAI-compatible chat call via LLM_BASE_URL/LLM_API_KEY/LLM_MODEL, `parseExtraction` pure normaliser mapping to the CaseContext jsonb shape with needs-taxonomy tokens); extraction ALWAYS inserts a new draft version (max+1) with extraction_model provenance; draft review form is editable and clearly marked "Draft — not approved"; Save changes updates only the draft row; Approve flips draft → approved with approved_at (draft-only guard — approved rows are never modified); approved state renders read-only; extraction failures show a page error and insert nothing. Also: `next.config.ts` gained `experimental.allowedOrigins` for the Base44 preview proxy (dev-mode Server Actions guard aborts action POSTs whose origin ≠ x-forwarded-host — proxy-origin mismatch, not app logic); LLM_MODEL secret corrected to OpenRouter model ID `google/gemini-2.5-flash` (was display name "Gemini 2.5 Flash" → HTTP 400); standalone latest-context table on the case page folded into the Context stage
+- DB changes: none (no schema changes; existing cases.original_notes + versioned case_contexts reused as designed)
+- Tests run: `npm run db:test:context` — 24/24 passed (parseExtraction normalisation incl. fenced/prose JSON, taxonomy tokens, unknown-needs kept; DB flow: notes persist → draft v1 → in-place edit → approve with timestamp → draft-only guard leaves approved row untouched → re-extract creates v2 draft, v1 intact → reload shows latest with correct status; cleanup); `npm run db:test` re-run 21/21; live LLM smoke test via `extractContextFromNotes` returned correctly structured context (model google/gemini-2.5-flash)
+- Result: pass with notes — automated + live-LLM verified; browser click-through of the form flow NOT yet re-verified after the Server Actions origin fix (first two attempts were blocked by stale action bindings after a service restart, then by the origin guard itself) — left as the user manual test
+- Known issues: preview proxy origin differs from sandbox host, so Server Actions in dev need `experimental.allowedOrigins` (done; delete if deploying behind a same-origin host); seeded v1 draft is a placeholder until the user runs a real extraction
+- Next phase: awaiting user manual test of Phase 2 (click-through steps provided); then Phase 3 — Find support — NOT started
+
 ## 2026-09-05 — Phase 1b: Minimal caseworker shell
 
 - Branch: `setup-branching-rules`
