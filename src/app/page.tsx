@@ -20,7 +20,14 @@ function SourcePill({ sourceType }: { sourceType: string }) {
 }
 
 function StatusPill({ status }: { status: string }) {
-  const cls = status === "needs_provider_confirmation" ? "needs" : status === "stale" ? "stale" : "approved";
+  const cls =
+    status === "needs_provider_confirmation"
+      ? "needs"
+      : status === "stale"
+        ? "stale"
+        : status === "provider_confirmed"
+          ? "provider"
+          : "verified";
   return <span className={`pill ${cls}`}>{status.replace(/_/g, " ")}</span>;
 }
 

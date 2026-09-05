@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-05 — Phase 1 fix: distinct provider-confirmed status
+
+- Branch: `setup-branching-rules`
+- Changes: added `provider_confirmed` as a distinct `service_attributes.verification_status` value (was conflated with `verified_machine`); schema check extended, seed's provider-confirmed facts (New Dawn, Harbour referral_required) now use the new status, confirmation-recording test asserts the distinct status, verification page shows distinct badges (green provider-confirmed vs blue machine-verified)
+- DB changes: check constraint altered to include `provider_confirmed` (drizzle-kit push did not detect the check-constraint diff, so applied via SQL — known drizzle-kit limitation for this change type); 4 existing confirmed rows migrated `verified_machine` → `provider_confirmed`
+- Tests run: full `npm run db:test` re-run — 21/21 passed
+- Result: pass — page shows machine-verified (blue) and provider-confirmed (green) distinctly; 0 console errors
+- Known issues: drizzle-kit push does not diff check-constraint changes; if a check is altered again, apply the `ALTER TABLE` manually
+- Next phase: awaiting user manual test of Phase 1; Phase 2 not started
+
 ## 2026-09-05 — Phase 1: Database foundation
 
 - Branch: `setup-branching-rules`

@@ -125,13 +125,13 @@ async function main() {
     // Harbour: excel import with stale + provider-confirmed mix
     { serviceId: harbour.id, attrType: "need", key: "need", value: "aod", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(60), verificationStatus: "verified_machine" },
     { serviceId: harbour.id, attrType: "need", key: "need", value: "mental_health_counselling", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(60), verificationStatus: "verified_machine" },
-    { serviceId: harbour.id, attrType: "eligibility", key: "referral_required", value: "yes", sourceType: "provider_confirmed", sourceName: "Phone confirmation by caseworker", retrievedAt: daysAgo(20), confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(20), verificationStatus: "verified_machine", notes: "GP referral required — confirmed directly with provider." },
+    { serviceId: harbour.id, attrType: "eligibility", key: "referral_required", value: "yes", sourceType: "provider_confirmed", sourceName: "Phone confirmation by caseworker", retrievedAt: daysAgo(20), confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(20), verificationStatus: "provider_confirmed", notes: "GP referral required — confirmed directly with provider." },
     { serviceId: harbour.id, attrType: "wait_time", key: "wait_time", value: "unknown", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(180), verificationStatus: "needs_provider_confirmation" },
 
     // New Dawn: provider-confirmed facts
-    { serviceId: newDawn.id, attrType: "need", key: "need", value: "employment", sourceType: "provider_confirmed", sourceName: "Phone confirmation by caseworker", retrievedAt: daysAgo(10), confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(10), verificationStatus: "verified_machine" },
-    { serviceId: newDawn.id, attrType: "eligibility", key: "children", value: "welcome", sourceType: "provider_confirmed", sourceName: "Phone confirmation by caseworker", retrievedAt: daysAgo(10), confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(10), verificationStatus: "verified_machine" },
-    { serviceId: newDawn.id, attrType: "access", key: "intake", value: "self_referral", sourceType: "provider_confirmed", sourceName: "Phone confirmation by caseworker", retrievedAt: daysAgo(10), confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(10), verificationStatus: "verified_machine" },
+    { serviceId: newDawn.id, attrType: "need", key: "need", value: "employment", sourceType: "provider_confirmed", sourceName: "Phone confirmation by caseworker", retrievedAt: daysAgo(10), confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(10), verificationStatus: "provider_confirmed" },
+    { serviceId: newDawn.id, attrType: "eligibility", key: "children", value: "welcome", sourceType: "provider_confirmed", sourceName: "Phone confirmation by caseworker", retrievedAt: daysAgo(10), confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(10), verificationStatus: "provider_confirmed" },
+    { serviceId: newDawn.id, attrType: "access", key: "intake", value: "self_referral", sourceType: "provider_confirmed", sourceName: "Phone confirmation by caseworker", retrievedAt: daysAgo(10), confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(10), verificationStatus: "provider_confirmed" },
   ]);
 
   // --- One synthetic woman / case with a draft context ---

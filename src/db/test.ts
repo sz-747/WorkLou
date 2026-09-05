@@ -168,7 +168,7 @@ async function main() {
         sourceName: "Phone confirmation by caseworker",
         confirmedBy: "Test Worker (phone)",
         confirmedAt: new Date(),
-        verificationStatus: "verified_machine",
+        verificationStatus: "provider_confirmed",
         notes: "Confirmed directly with provider in db:test.",
       })
       .where(eq(serviceAttributes.id, petsFact.id));
@@ -177,7 +177,12 @@ async function main() {
       .select()
       .from(serviceAttributes)
       .where(eq(serviceAttributes.id, petsFact.id));
-    assert("provider confirmation recorded (by + at + source)", !!confirmed?.confirmedAt && confirmed?.sourceType === "provider_confirmed");
+    assert(
+      "provider confirmation recorded (by + at + source + distinct status)",
+      !!confirmed?.confirmedAt &&
+        confirmed?.sourceType === "provider_confirmed" &&
+        confirmed?.verificationStatus === "provider_confirmed",
+    );
     assert("confirmed fact value updated", confirmed?.value === "small_pets_ok");
 
     // restore seeded fact state

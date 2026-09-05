@@ -88,7 +88,7 @@ export const serviceAttributes = pgTable(
     ),
     check(
       "service_attributes_verification_status_check",
-      sql`${t.verificationStatus} in ('verified_machine','needs_provider_confirmation','stale')`,
+      sql`${t.verificationStatus} in ('verified_machine','needs_provider_confirmation','stale','provider_confirmed')`,
     ),
     index("service_attributes_lookup_idx").on(t.serviceId, t.attrType, t.key),
   ],

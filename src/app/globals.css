@@ -18,6 +18,7 @@ th { background: #f3f3f3; }
 .pill.provider { background: #dcfce7; }
 .pill.manual { background: #f3e8ff; }
 .pill.needs { background: #fee2e2; }
+.pill.verified { background: #dbeafe; }
 .pill.stale { background: #ffedd5; }
 .pill.draft { background: #f1f5f9; }
 .pill.approved { background: #dcfce7; }
