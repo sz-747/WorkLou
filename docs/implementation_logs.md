@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-05 — Phase 3: Find support (deterministic matching from approved context)
+
+- Branch: `setup-branching-rules`
+- Changes: `src/lib/matching.ts` (pure `evaluateService`/`matchServices` over typed `service_attributes` rows + `getLatestApprovedContext` / `getMatchCandidates` query helpers); `src/app/women/[id]/FindSupportStage.tsx` (server component: per-criterion evidence, source + freshness per fact, explicit unknowns — "not recorded" vs "needs provider confirmation", "Not suitable" collapsed section with one-line deterministic reasons); case workspace stage 2 now renders real results instead of the stub. No LLM anywhere in the match path; ranking is deterministic (matched needs, then freshness provider_confirmed > verified_machine > stale, then name) and no confidence score exists in the code or UI. Matching only ever runs against the latest APPROVED context; drafts never used. Hard exclusions (children/pets/visa restrictions from stored values) exclude a service with a reason; language/income mismatches flag but don't exclude (choosing is the worker's call)
+- DB changes: none (no schema changes; one test-only fix: `db:test` "jsonb context query finds the case by need" now asserts the seeded case is found rather than an exact row count — the Phase 2 walkthrough legitimately added context versions to the seeded case)
+- Tests run: `npm run db:test:matching` — 24/24 passed (pure matching on seed-mirroring fixtures: needs match with provenance, pets unknown flagged, stale wait flagged, children restriction excludes with stored-value reason, language mismatch flagged not excluded, deterministic ranking, context change flips results; DB flow: drafts never used despite higher-version draft, seeded services match Watershed/Southside/Bright Path and exclude New Dawn/Harbour with reasons, re-approved context recomputes results, every displayed fact carries source + freshness, cleanup); `db:test` 21/21 and `db:test:context` 24/24 re-run green; live preview verified against the user's own manually-approved Context v3 — Watershed suitable with evidence + unknowns, 4 services excluded with reasons, 0 console errors
+- Result: pass — all Phase 3 acceptance criteria verified (LLM-free path, evidence + freshness per criterion, unknowns explicit, results change with approved context, no fake confidence)
+- Known issues: none outstanding for Phase 3
+- Next phase: awaiting user manual test of Phase 3; then Phase 4 — Verify — NOT started
+
 ## 2026-09-05 — Phase 2 fix: Server Actions origin guard (correct config path) + full browser verification
 
 - Branch: `setup-branching-rules`

@@ -7,7 +7,8 @@
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
     "db:test": "tsx src/db/test.ts",
-    "db:test:context": "tsx src/db/test-context.ts"
+    "db:test:context": "tsx src/db/test-context.ts",
+    "db:test:matching": "tsx src/db/test-matching.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.0",

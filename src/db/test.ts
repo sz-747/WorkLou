@@ -269,7 +269,13 @@ async function main() {
     .from(caseContexts)
     .innerJoin(cases, eq(caseContexts.caseId, cases.id))
     .where(sql`${caseContexts.context} -> 'needs' ? 'housing_accommodation'`);
-  assert("jsonb context query finds the case by need", caseWithHousingNeed.length === 1);
+  // seeded case may now have several context versions (Phase 2 walkthroughs);
+  // the point is the jsonb containment query finds the seeded case by need
+  assert(
+    "jsonb context query finds the case by need",
+    caseWithHousingNeed.length >= 1 &&
+      caseWithHousingNeed.some((r) => r.clientRef === seededCase.clientRef),
+  );
 
   // case documents + discovery candidates create/read
   const [testDoc] = await db

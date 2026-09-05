@@ -10,6 +10,8 @@ import {
   services,
 } from "../../../db/schema";
 import { ContextStage } from "./ContextStage";
+import { FindSupportStage } from "./FindSupportStage";
+import { getLatestApprovedContext, getMatchCandidates, matchServices } from "../../../lib/matching";
 
 export const dynamic = "force-dynamic";
 
@@ -49,13 +51,12 @@ export default async function CaseWorkspace({
 
   const docCount = (await db.select().from(caseDocuments).where(eq(caseDocuments.caseId, id))).length;
 
+  const approvedContext = await getLatestApprovedContext(id);
+  const matchResults = approvedContext
+    ? matchServices(approvedContext.context, await getMatchCandidates())
+    : null;
+
   const stages = [
-    {
-      n: 2,
-      name: "Find support",
-      state: "Not built yet.",
-      placeholder: "Deterministic service matching from approved context. (Phase 3)",
-    },
     {
       n: 3,
       name: "Verify",
@@ -97,6 +98,10 @@ export default async function CaseWorkspace({
           latest={latestContext}
           extractError={extractError}
         />
+      </section>
+      <section style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
+        <h3 style={{ margin: "0.25rem 0" }}>2. Find support</h3>
+        <FindSupportStage approved={approvedContext} results={matchResults} />
       </section>
       {stages.map((s) => (
         <section key={s.n} style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
