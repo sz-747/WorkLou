@@ -1,0 +1,22 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "LLM_BASE_URL",
+      "description": "Base URL of the LLM API endpoint (used from Phase 2 for context extraction and drafting)",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "LLM_API_KEY",
+      "description": "API key for the LLM endpoint",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "LLM_MODEL",
+      "description": "Model name to use for extraction/drafting",
+      "requiredAtBoot": false
+    }
+  ]
+}

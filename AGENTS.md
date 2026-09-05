@@ -23,6 +23,15 @@ These rules apply to every new branch/session on this repository. Follow them ex
 7. **Update the docs.** Record what was built and any decisions made (implementation logs, plan status).
 8. **Provide short manual test steps.** The user will test personally before merging the branch to main.
 
+## Project commands (Lou's Place casework tool)
+
+- Start stack: `docker compose -f docker-compose.base44.yml up -d` (db + one-shot setup [npm install → drizzle-kit push → seed, idempotent] + web on port 3000)
+- DB tests: `docker compose -f docker-compose.base44.yml exec -T web npm run db:test` (creates + cleans up its own rows)
+- Fresh seed: `docker compose -f docker-compose.base44.yml exec -T web npm run db:seed` (skips if already seeded)
+- Direct DB: `docker compose -f docker-compose.base44.yml exec db psql -U lou -d lousplace`; Postgres is also exposed on host port 5432 (dev-only creds: lou / lou_dev_only, db lousplace)
+- `drizzle-kit push` (not generate/migrate) keeps the DB in sync — schema source of truth is `src/db/schema.ts`
+- Source-of-truth docs live in `docs/` — read all four before any work (see Session start rules)
+
 ## Verification checklist (before reporting done)
 
 - [ ] Branched from latest main

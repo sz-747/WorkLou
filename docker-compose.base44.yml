@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=lou
+      - POSTGRES_PASSWORD=lou_dev_only
+      - POSTGRES_DB=lousplace
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lou -d lousplace"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  setup:
+    image: node:22
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgres://lou:lou_dev_only@db:5432/lousplace
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "npm install --no-audit --no-fund && npx drizzle-kit push --force && npm run db:seed"
+
+  web:
+    image: node:22
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://lou:lou_dev_only@db:5432/lousplace
+      - BASE44_PUBLIC_HOST_SUFFIX=${BASE44_PUBLIC_HOST_SUFFIX}
+      - WATCHPACK_POLLING=true
+    env_file:
+      - /run/base44/app.env
+    depends_on:
+      db:
+        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
+    command: sh -c "npx next dev -p 3000 -H 0.0.0.0"
+
+volumes:
+  pgdata:

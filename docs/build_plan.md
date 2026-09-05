@@ -1,13 +1,13 @@
 # Build Plan — Lou's Place Casework Workflow Tool
 
-Stack: **Next.js fullstack** (React + API routes) + **Postgres** (Prisma or Drizzle), run in Docker compose in the dev environment.
+Stack: **Next.js fullstack** (React + API routes) + **Postgres via Drizzle**, run in Docker compose in the dev environment.
 
 One phase per workflow step. Each phase gets its own branch from latest `main`, per `AGENTS.md`. Status: **NOT STARTED / IN PROGRESS / COMPLETE**. A phase is COMPLETE only after the user has manually tested it and merged the branch.
 
 | # | Phase | Scope | Acceptance criteria | Status |
 |---|-------|-------|---------------------|--------|
 | 0 | Docs scaffolding | `docs/` structure + `AGENTS.md` session rules | Files exist; rules recorded | COMPLETE |
-| 1 | Foundation | Next.js app boots; Postgres up in compose; schema migrated; synthetic seed data (services, service attributes with provenance, cases) | App runs; DB migrated; a minimal screen lists seeded services with their freshness/source | NOT STARTED |
+| 1 | Foundation | Next.js app boots; Postgres up in compose; schema migrated; synthetic seed data (services, service attributes with provenance, cases) | App runs; DB migrated; a minimal screen lists seeded services with their freshness/source | IN PROGRESS — built and automated-tested; awaiting user manual test + merge |
 | 2 | Context | Rough notes → LLM extraction → lightweight structured case context → worker reviews/edits/approves | Notes entered produce a draft context; worker approves; approved context stored (versioned, linked to notes) | NOT STARTED |
 | 3 | Find support | Deterministic structured query of service database using approved context; results with evidence + freshness | Approved context returns suitable services; each result shows which criteria matched, the source, and last-verified date; no LLM in the match path | NOT STARTED |
 | 4 | Verify | Auto-resolve everything available from machine-accessible sources; flag only facts that genuinely need provider confirmation; record provider confirmations | Verification run updates fact freshness/status with timestamps; only genuinely-needs-human items are flagged; human confirmations are stored with who/when | NOT STARTED |

@@ -9,6 +9,8 @@
 
 ## Proposed Postgres schema (simplest that supports the demo and future migration)
 
+> **Status: IMPLEMENTED in Phase 1** — Drizzle schema in `src/db/schema.ts`, pushed via `drizzle-kit push`, seeded by `src/db/seed.ts`, tested by `src/db/test.ts` (21/21 pass).
+
 Core idea: `services` + `service_attributes` (structured facts, each carrying provenance/freshness) keep service knowledge; `cases` + `case_contexts` keep lightweight case context; `referrals` + `case_documents` keep activity and outputs; `discovery_candidates` supports process B.
 
 ### services

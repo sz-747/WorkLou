@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-05 — Phase 1: Database foundation
+
+- Branch: `setup-branching-rules`
+- Changes: Next.js fullstack skeleton (App Router) + Postgres 16 in `docker-compose.base44.yml`; Drizzle schema `src/db/schema.ts` (services, service_attributes, cases, case_contexts, referrals, case_documents, discovery_candidates — per approved plan, no redesign); idempotent seed `src/db/seed.ts` (5 services with mixed provenance — excel_import / machine / provider_confirmed, 20 service_attributes incl. needs_provider_confirmation + stale facts, 1 synthetic woman/case with draft context); minimal data-verification page `src/app/page.tsx`; relationship/query tests `src/db/test.ts`
+- DB changes: initial schema via `drizzle-kit push` (check constraints + indexes per plan); synthetic seed
+- Tests run: `npm run db:test` — 21/21 passed: create/read/update across service→attribute, case→context→referral joins, referral status progression (draft→approved→sent with sent_at), provider confirmation recording, outcome update, deterministic need query with provenance/freshness, jsonb context query, discovery dedup, cleanup with cascade check
+- Result: pass — app serves on port 3000 under external preview host; preview renders seeded data with source/status badges, 0 console errors, 0 failed requests
+- Known issues: seed provenance values are synthetic placeholders (real Excel/page snapshots not yet imported — by design for Phase 1); Postgres exposed on host port 5432 for external inspection (dev-only credentials)
+- Next phase: Phase 2 — Context (LLM extraction) — NOT started; awaiting user manual test of Phase 1
+
 ## 2026-09-05 — Design decisions locked (pre-Phase 1)
 
 - Branch: `setup-branching-rules`
