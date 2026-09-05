@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000 -H 0.0.0.0",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
-    "db:test": "tsx src/db/test.ts"
+    "db:test": "tsx src/db/test.ts",
+    "db:test:context": "tsx src/db/test-context.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.0",

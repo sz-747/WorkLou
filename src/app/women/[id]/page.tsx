@@ -9,6 +9,7 @@ import {
   referrals,
   services,
 } from "../../../db/schema";
+import { ContextStage } from "./ContextStage";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +18,13 @@ const fmtDate = (d: Date | string | null) =>
 
 export default async function CaseWorkspace({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ extractError?: string }>;
 }) {
   const { id } = await params;
+  const { extractError } = await searchParams;
 
   const [caseRow] = await db.select().from(cases).where(eq(cases.id, id));
   if (!caseRow) notFound();
@@ -46,14 +50,6 @@ export default async function CaseWorkspace({
   const docCount = (await db.select().from(caseDocuments).where(eq(caseDocuments.caseId, id))).length;
 
   const stages = [
-    {
-      n: 1,
-      name: "Context",
-      state: latestContext
-        ? `Latest context v${latestContext.version} — ${latestContext.status}.`
-        : "No context yet.",
-      placeholder: "Notes → extract structured context → review and approve. (Phase 2)",
-    },
     {
       n: 2,
       name: "Find support",
@@ -92,31 +88,16 @@ export default async function CaseWorkspace({
       </h1>
       <p style={{ fontSize: "0.85rem" }}>Created {fmtDate(caseRow.createdAt)}</p>
 
-      <h2>Case notes</h2>
-      <p style={{ fontSize: "0.85rem" }}>{caseRow.originalNotes}</p>
-
-      {latestContext && (
-        <>
-          <h2>
-            Context v{latestContext.version}{" "}
-            <span className={`pill ${latestContext.status === "approved" ? "approved" : "draft"}`}>
-              {latestContext.status}
-            </span>
-          </h2>
-          <table>
-            <tbody>
-              {Object.entries(latestContext.context).map(([k, v]) => (
-                <tr key={k}>
-                  <th>{k}</th>
-                  <td>{typeof v === "object" ? JSON.stringify(v) : String(v)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-
       <h2>Workflow</h2>
+      <section style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
+        <h3 style={{ margin: "0.25rem 0" }}>1. Context</h3>
+        <ContextStage
+          caseId={id}
+          originalNotes={caseRow.originalNotes}
+          latest={latestContext}
+          extractError={extractError}
+        />
+      </section>
       {stages.map((s) => (
         <section key={s.n} style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
           <h3 style={{ margin: "0.25rem 0" }}>
