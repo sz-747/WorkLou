@@ -7,7 +7,7 @@
  */
 import { eq } from "drizzle-orm";
 import { db } from "./index";
-import { caseContexts, cases, referrals, serviceAttributes, services, type CaseContext } from "./schema";
+import { caseContexts, caseDocuments, cases, referrals, services, type CaseContext } from "./schema";
 import { insertReferralDraft, markReferralSent } from "../lib/refer";
 import { recordOutcome, recordProviderResponse } from "../lib/followup";
 import {
@@ -17,7 +17,9 @@ import {
   getProviderConfirmationsForCase,
   insertDocumentDraft,
   saveDocumentDraftText,
+  fallbackCaseNoteText,
 } from "../lib/document";
+import { recordProviderConfirmation } from "../lib/verify";
 
 let passed = 0;
 let failed = 0;
@@ -62,7 +64,7 @@ async function main() {
 
   const input = buildCaseNoteInput({
     clientRef: "CASE-2026-099",
-    createdAt: "2026-09-01T02:00:00Z",
+    appointmentAt: "2026-08-31T15:30:00Z",
     originalNotes: "Rough notes: she said she needs housing urgently.",
     context,
     referrals: [
@@ -101,7 +103,7 @@ async function main() {
   });
 
   assert("original notes enter verbatim", input.originalNotes === "Rough notes: she said she needs housing urgently.");
-  assert("appointment date is ISO yyyy-mm-dd", input.appointmentDate === "2026-09-01");
+  assert("appointment date uses the Sydney calendar date", input.appointmentDate === "2026-09-01");
   const womanFields = input.womanStated.map((f) => f.field);
   const workerFields = input.workerObservations.map((f) => f.field);
   assert(
@@ -133,7 +135,7 @@ async function main() {
   );
   const noContext = buildCaseNoteInput({
     clientRef: "C",
-    createdAt: "2026-09-01T00:00:00Z",
+    appointmentAt: "2026-09-01T00:00:00Z",
     originalNotes: "notes",
     context: null,
     referrals: [],
@@ -173,16 +175,16 @@ async function main() {
   await recordProviderResponse(draftReferralId, "Provider responded positively.");
   await recordOutcome(draftReferralId, "support_received", "Housing secured.");
 
-  await db.insert(serviceAttributes).values({
+  await recordProviderConfirmation({
+    caseId: testCase.id,
+    attrId: null,
     serviceId: testService.id,
     attrType: "delivery",
     key: "intake",
     value: "phone intake Mon-Fri",
-    sourceType: "provider_confirmed",
-    sourceName: "Provider confirmation — Provider on phone",
-    verificationStatus: "provider_confirmed",
     confirmedBy: "Provider on phone",
     confirmedAt: new Date(),
+    notes: null,
   });
 
   const confirmations = await getProviderConfirmationsForCase(testCase.id);
@@ -190,6 +192,36 @@ async function main() {
     "provider confirmations for the case's referred services returned",
     confirmations.length === 1 && confirmations[0].serviceName === "Doc Test Service",
   );
+  const fallbackNote = fallbackCaseNoteText(input);
+  assert(
+    "deterministic case-note fallback has every required section in order",
+    ["Woman said", "Current concerns", "Actions taken", "Referrals", "Worker observations", "Next steps"]
+      .map((heading) => fallbackNote.indexOf(heading))
+      .every((position, index, positions) => position >= 0 && (index === 0 || position > positions[index - 1])),
+  );
+
+  const [otherCase] = await db
+    .insert(cases)
+    .values({ clientRef: "CASE-DOC-OTHER", status: "open", originalNotes: "Other case." })
+    .returning({ id: cases.id });
+  await recordProviderConfirmation({
+    caseId: otherCase.id,
+    attrId: null,
+    serviceId: testService.id,
+    attrType: "eligibility",
+    key: "pets",
+    value: "allowed",
+    confirmedBy: "Other provider call",
+    confirmedAt: new Date(),
+    notes: null,
+  });
+  const isolatedConfirmations = await getProviderConfirmationsForCase(testCase.id);
+  assert(
+    "another case's confirmation for the same service never enters this case note",
+    isolatedConfirmations.length === 1 &&
+      !isolatedConfirmations.some((c) => c.fact.includes("pet policy")),
+  );
+  await db.delete(cases).where(eq(cases.id, otherCase.id));
 
   const docId = await insertDocumentDraft(testCase.id, "Draft note text v1.");
   const docs1 = await getCaseDocuments(testCase.id);
@@ -208,6 +240,11 @@ async function main() {
     docs2[0].status === "approved" && docs2[0].draftText === "Edited note text v2." && docs2[0].approvedAt !== null,
   );
   assert("guard: approved note cannot be edited", !(await saveDocumentDraftText(docId, "sneaky edit")));
+  const [immutableApproved] = await db
+    .select({ text: caseDocuments.draftText })
+    .from(caseDocuments)
+    .where(eq(caseDocuments.id, docId));
+  assert("guard: rejected edit leaves approved text unchanged", immutableApproved.text === "Edited note text v2.");
   assert("guard: approved note cannot be re-approved", !(await approveDocument(docId)));
   assert("guard: unknown id rejected", !(await approveDocument("00000000-0000-0000-0000-000000000000")));
 
@@ -227,7 +264,6 @@ async function main() {
   // ---------- CLEANUP ----------
   console.log("[CLEANUP] removing test rows");
   await db.delete(cases).where(eq(cases.id, testCase.id));
-  await db.delete(serviceAttributes).where(eq(serviceAttributes.serviceId, testService.id));
   await db.delete(services).where(eq(services.id, testService.id));
   const orphanDocs = await getCaseDocuments(testCase.id);
   const orphanReferrals = await db.select().from(referrals).where(eq(referrals.caseId, testCase.id));

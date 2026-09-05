@@ -8,12 +8,13 @@
 import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import { db } from "../db";
 import { cases, referralEvents, referrals, services } from "../db/schema";
-import { chatCompletionsUrl } from "./extraction";
+import { chatCompletionsUrl, fetchLlm } from "./extraction";
+import { sydneyDate } from "./dates";
 
 /** Outcome options (referrals.outcome check constraint keeps these in sync). */
 export const OUTCOMES = [
   { value: "awaiting_reply", label: "Awaiting reply", final: false },
-  { value: "accepted", label: "Accepted", final: true },
+  { value: "accepted", label: "Accepted", final: false },
   { value: "declined", label: "Declined", final: true },
   { value: "referred_elsewhere", label: "Referred elsewhere", final: true },
   { value: "support_received", label: "Support received", final: true },
@@ -66,19 +67,26 @@ export async function recordProviderResponse(
 ): Promise<boolean> {
   const trimmed = note.trim();
   if (!trimmed) return false;
-  const updated = await db
-    .update(referrals)
-    .set({ status: "responded" })
-    .where(
-      and(
-        eq(referrals.id, referralId),
-        inArray(referrals.status, [...OPEN_STATUSES]),
-      ),
-    )
-    .returning({ id: referrals.id });
-  if (updated.length === 0) return false;
-  await insertEvent(referralId, "provider_response", trimmed, occurredAt);
-  return true;
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(referrals)
+      .set({ status: "responded" })
+      .where(
+        and(
+          eq(referrals.id, referralId),
+          inArray(referrals.status, [...OPEN_STATUSES]),
+        ),
+      )
+      .returning({ id: referrals.id });
+    if (updated.length === 0) return false;
+    await tx.insert(referralEvents).values({
+      referralId,
+      kind: "provider_response",
+      note: trimmed,
+      occurredAt,
+    });
+    return true;
+  });
 }
 
 /**
@@ -93,27 +101,29 @@ export async function recordOutcome(
 ): Promise<boolean> {
   if (!isValidOutcome(outcome)) return false;
   const final = isFinalOutcome(outcome);
-  const updated = await db
-    .update(referrals)
-    .set({
-      outcome,
-      outcomeNotes: notes?.trim() || null,
-      outcomeAt: new Date(),
-      status: final ? "closed" : "responded",
-    })
-    .where(
-      and(
-        eq(referrals.id, referralId),
-        inArray(referrals.status, [...OPEN_STATUSES]),
-      ),
-    )
-    .returning({ id: referrals.id });
-  if (updated.length === 0) return false;
   const note = notes?.trim()
     ? `${outcomeLabel(outcome)} — ${notes.trim()}`
     : outcomeLabel(outcome);
-  await insertEvent(referralId, "outcome", note);
-  return true;
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(referrals)
+      .set({
+        outcome,
+        outcomeNotes: notes?.trim() || null,
+        outcomeAt: new Date(),
+        status: final ? "closed" : "responded",
+      })
+      .where(
+        and(
+          eq(referrals.id, referralId),
+          inArray(referrals.status, [...OPEN_STATUSES]),
+        ),
+      )
+      .returning({ id: referrals.id });
+    if (updated.length === 0) return false;
+    await tx.insert(referralEvents).values({ referralId, kind: "outcome", note });
+    return true;
+  });
 }
 
 /** All timeline events for one referral, oldest first. */
@@ -148,7 +158,7 @@ export async function getReferralEventsForCase(caseId: string): Promise<Referral
 }
 
 /** Sent referrals whose follow-up is due (due date today or past, still open). */
-export async function getDueFollowUps(today: string = new Date().toISOString().slice(0, 10)) {
+export async function getDueFollowUps(today: string = sydneyDate(new Date())) {
   return db
     .select({
       referralId: referrals.id,
@@ -200,14 +210,14 @@ export function buildFollowUpDraftInput(
   return {
     serviceName: referral.serviceName,
     clientRef: referral.clientRef,
-    sentAt: referral.sentAt ? new Date(referral.sentAt).toISOString().slice(0, 10) : "",
+    sentAt: referral.sentAt ? sydneyDate(referral.sentAt) : "",
     referralText: referral.draftText ?? "",
     status: referral.status,
     outcome: referral.outcome ? outcomeLabel(referral.outcome) : null,
     responses: events
       .filter((e) => e.kind === "provider_response")
       .map((e) => ({
-        occurredAt: new Date(e.occurredAt).toISOString().slice(0, 10),
+        occurredAt: sydneyDate(e.occurredAt),
         note: e.note,
       })),
   };
@@ -232,7 +242,7 @@ export async function draftFollowUpText(input: FollowUpDraftInput): Promise<stri
     throw new Error("LLM not configured (LLM_BASE_URL / LLM_API_KEY / LLM_MODEL missing)");
   }
 
-  const res = await fetch(chatCompletionsUrl(base), {
+  const res = await fetchLlm(chatCompletionsUrl(base), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -257,6 +267,14 @@ export async function draftFollowUpText(input: FollowUpDraftInput): Promise<stri
   const content = data.choices?.[0]?.message?.content;
   if (!content?.trim()) throw new Error("LLM returned no content");
   return content.trim();
+}
+
+export function fallbackFollowUpText(input: FollowUpDraftInput): string {
+  return [
+    `Hello ${input.serviceName},`,
+    `I am following up on referral ${input.clientRef}, sent ${input.sentAt || "date not recorded"}.`,
+    "Please provide an update on the referral status.",
+  ].join("\n\n");
 }
 
 /**

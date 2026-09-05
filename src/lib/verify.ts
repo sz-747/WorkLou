@@ -1,8 +1,9 @@
 /**
  * Phase 4 — Verify.
  * Splits a service's stored facts into (a) already known from
- * machine-accessible sources and (b) genuinely provider-only unknowns,
- * and records provider confirmations into the shared service knowledge.
+ * machine-accessible sources and (b) volatile availability facts that
+ * genuinely require a current provider answer, then records those answers
+ * into the shared service knowledge.
  *
  * No LLM here and no machine refetching (that is Phase 7A's job):
  * this module only displays stored machine-sourced facts and persists
@@ -13,7 +14,12 @@
  */
 import { eq } from "drizzle-orm";
 import { db } from "../db";
-import { serviceAttributes, services, type CaseContext } from "../db/schema";
+import {
+  providerConfirmationEvents,
+  serviceAttributes,
+  services,
+  type CaseContext,
+} from "../db/schema";
 import type { FactRow } from "./matching";
 
 export type VerifyItem = {
@@ -30,7 +36,7 @@ export type VerifyItem = {
 export type VerifyGroup = {
   /** already known from machine-accessible sources or provider confirmations. */
   known: FactRow[];
-  /** genuinely needs direct provider confirmation (or is missing entirely). */
+  /** current operational facts that need a provider answer (or are missing). */
   needsConfirmation: VerifyItem[];
 };
 
@@ -53,18 +59,32 @@ export function factLabel(key: string): string {
 }
 
 /** Whether a stored fact counts as known (shared by Verify and Refer). */
+function isExpired(fact: FactRow, now: Date): boolean {
+  return !!fact.expiresAt && new Date(fact.expiresAt).getTime() <= now.getTime();
+}
+
 export function isKnownFact(fact: FactRow): boolean {
+  return isKnownFactAt(fact, new Date());
+}
+
+export function isKnownFactAt(fact: FactRow, now: Date): boolean {
+  const conditional = new Set(["temporary_visa_considered", "nil_income_considered"]);
   return (
+    !isExpired(fact, now) &&
     fact.value !== "unknown" &&
+    !conditional.has(fact.value) &&
     (fact.verificationStatus === "verified_machine" ||
       fact.verificationStatus === "provider_confirmed" ||
       fact.verificationStatus === "admin_corrected")
   );
 }
 
-function needsConfirmation(fact: FactRow): boolean {
+function needsConfirmation(fact: FactRow, now: Date): boolean {
   return (
+    isExpired(fact, now) ||
     fact.value === "unknown" ||
+    fact.value === "temporary_visa_considered" ||
+    fact.value === "nil_income_considered" ||
     fact.verificationStatus === "needs_provider_confirmation" ||
     fact.verificationStatus === "stale"
   );
@@ -80,46 +100,47 @@ function historyLine(fact: FactRow): string {
 
 /**
  * Group a service's facts for verification against the case's criteria.
- * Pure and deterministic: unknowns (missing facts, 'unknown' values,
- * stale facts) are always shown as needing confirmation — never assumed known.
+ * Durable service-profile gaps (pets, languages, visa, income, etc.) belong
+ * to the background online updater. The caseworker call list contains only
+ * volatile operational facts whose answer can change within hours or days.
  */
-export function groupFacts(context: CaseContext, facts: FactRow[]): VerifyGroup {
+export function groupFacts(context: CaseContext, facts: FactRow[], now: Date = new Date()): VerifyGroup {
   const known: FactRow[] = [];
   const pending: VerifyItem[] = [];
 
+  const relevant: { attrType: string; key: string; hint: string }[] = [
+    { attrType: "wait_time", key: "wait_time", hint: "ask the provider: current wait time" },
+  ];
+  if (context.needs.includes("housing_accommodation"))
+    relevant.push({ attrType: "delivery", key: "capacity", hint: "ask the provider: current capacity" });
+
   for (const fact of facts) {
-    if (isKnownFact(fact)) known.push(fact);
-    else if (needsConfirmation(fact)) {
-      const stale = fact.verificationStatus === "stale";
+    if (isKnownFactAt(fact, now)) known.push(fact);
+  }
+
+  // Emit at most one call question per operational fact. A current answer wins
+  // over any older duplicate row; otherwise show the newest available history.
+  for (const r of relevant) {
+    const matching = facts.filter((fact) => fact.attrType === r.attrType && fact.key === r.key);
+    if (matching.some((fact) => isKnownFactAt(fact, now))) continue;
+
+    const fact = matching
+      .filter((item) => needsConfirmation(item, now))
+      .sort((a, b) => {
+        const time = (item: FactRow) => new Date(item.confirmedAt ?? item.retrievedAt ?? 0).getTime();
+        return time(b) - time(a);
+      })[0];
+    if (fact) {
+      const stale = fact.verificationStatus === "stale" || isExpired(fact, now);
       pending.push({
         label: factLabel(fact.key),
         attrType: fact.attrType,
         key: fact.key,
         fact,
-        hint: `ask the provider: ${factLabel(fact.key)}`,
+        hint: r.hint,
         history: stale || fact.confirmedAt ? historyLine(fact) : null,
       });
-    }
-    // facts that are neither known nor pending (none in the current status set) are ignored
-  }
-
-  // relevant criteria with NO stored fact at all are explicit unknowns
-  const relevant: { attrType: string; key: string; hint: string }[] = [];
-  if (context.children && context.children.count > 0)
-    relevant.push({ attrType: "eligibility", key: "children", hint: "ask the provider: children policy" });
-  if (context.pets?.has_pet)
-    relevant.push({ attrType: "eligibility", key: "pets", hint: "ask the provider: pet policy" });
-  if (context.visa)
-    relevant.push({ attrType: "eligibility", key: "visa", hint: "ask the provider: visa restrictions" });
-  if (context.languages.length > 0)
-    relevant.push({ attrType: "eligibility", key: "languages", hint: "ask the provider: language support / interpreters" });
-  if (context.income?.status)
-    relevant.push({ attrType: "eligibility", key: "income", hint: "ask the provider: income eligibility" });
-  if (context.urgency === "high")
-    relevant.push({ attrType: "wait_time", key: "wait_time", hint: "ask the provider: current wait time" });
-
-  for (const r of relevant) {
-    if (!facts.some((f) => f.attrType === r.attrType && f.key === r.key)) {
+    } else if (matching.length === 0) {
       pending.push({ label: factLabel(r.key), attrType: r.attrType, key: r.key, fact: null, hint: r.hint, history: null });
     }
   }
@@ -128,6 +149,7 @@ export function groupFacts(context: CaseContext, facts: FactRow[]): VerifyGroup 
 }
 
 export type ConfirmationInput = {
+  caseId: string;
   /** existing fact row to update in place; null inserts the missing fact. */
   attrId: string | null;
   serviceId: string;
@@ -139,6 +161,12 @@ export type ConfirmationInput = {
   notes: string | null;
 };
 
+function providerConfirmationExpiry(key: string, confirmedAt: Date): Date | null {
+  const ttlHours: Record<string, number> = { capacity: 4, wait_time: 24 };
+  const hours = ttlHours[key];
+  return hours ? new Date(confirmedAt.getTime() + hours * 60 * 60 * 1000) : null;
+}
+
 /**
  * Record a provider confirmation into the shared service knowledge.
  * Updates the existing row (never a parallel duplicate) or inserts the
@@ -146,39 +174,58 @@ export type ConfirmationInput = {
  */
 export async function recordProviderConfirmation(input: ConfirmationInput): Promise<string> {
   const sourceName = `Provider confirmation — ${input.confirmedBy}`;
-  if (input.attrId) {
-    await db
-      .update(serviceAttributes)
-      .set({
-        value: input.value,
-        sourceType: "provider_confirmed",
-        sourceName,
-        retrievedAt: input.confirmedAt,
-        verificationStatus: "provider_confirmed",
-        confirmedBy: input.confirmedBy,
-        confirmedAt: input.confirmedAt,
-        notes: input.notes ?? undefined,
-      })
-      .where(eq(serviceAttributes.id, input.attrId));
-    return input.attrId;
-  }
-  const [row] = await db
-    .insert(serviceAttributes)
-    .values({
+  return db.transaction(async (tx) => {
+    let attributeId = input.attrId;
+    if (attributeId) {
+      const updated = await tx
+        .update(serviceAttributes)
+        .set({
+          value: input.value,
+          sourceType: "provider_confirmed",
+          sourceName,
+          retrievedAt: input.confirmedAt,
+          expiresAt: providerConfirmationExpiry(input.key, input.confirmedAt),
+          verificationStatus: "provider_confirmed",
+          confirmedBy: input.confirmedBy,
+          confirmedAt: input.confirmedAt,
+          notes: input.notes ?? undefined,
+        })
+        .where(eq(serviceAttributes.id, attributeId))
+        .returning({ id: serviceAttributes.id });
+      if (updated.length === 0) throw new Error("Confirmation fact not found");
+    } else {
+      const [row] = await tx
+        .insert(serviceAttributes)
+        .values({
+          serviceId: input.serviceId,
+          attrType: input.attrType,
+          key: input.key,
+          value: input.value,
+          sourceType: "provider_confirmed",
+          sourceName,
+          retrievedAt: input.confirmedAt,
+          expiresAt: providerConfirmationExpiry(input.key, input.confirmedAt),
+          verificationStatus: "provider_confirmed",
+          confirmedBy: input.confirmedBy,
+          confirmedAt: input.confirmedAt,
+          notes: input.notes ?? undefined,
+        })
+        .returning({ id: serviceAttributes.id });
+      attributeId = row.id;
+    }
+    await tx.insert(providerConfirmationEvents).values({
+      caseId: input.caseId,
       serviceId: input.serviceId,
+      attributeId,
       attrType: input.attrType,
       key: input.key,
       value: input.value,
-      sourceType: "provider_confirmed",
-      sourceName,
-      retrievedAt: input.confirmedAt,
-      verificationStatus: "provider_confirmed",
       confirmedBy: input.confirmedBy,
       confirmedAt: input.confirmedAt,
-      notes: input.notes ?? undefined,
-    })
-    .returning({ id: serviceAttributes.id });
-  return row.id;
+      notes: input.notes,
+    });
+    return attributeId;
+  });
 }
 
 /**

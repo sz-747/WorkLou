@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import {
   buildReferralDraftInput,
   draftReferralText,
+  fallbackReferralText,
   insertReferralDraft,
   markReferralSent,
   saveReferralDraftText,
@@ -37,7 +38,7 @@ export async function generateReferralDraft(fd: FormData): Promise<void> {
     .map(String)
     .filter((v) => CONTEXT_FIELDS.some((f) => f.key === v));
 
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/women/${caseId}?referError=${encodeURIComponent(msg)}`);
   if (!serviceId) back("Choose a service to refer to.");
   if (sharedFields.length === 0) back("Choose at least one item to share.");
@@ -65,16 +66,15 @@ export async function generateReferralDraft(fd: FormData): Promise<void> {
   const input = buildReferralDraftInput(
     approved.context,
     sharedFields,
-    loaded.service,
-    loaded.facts,
+    loaded!.service,
+    loaded!.facts,
   );
 
   let draftText: string;
   try {
     draftText = await draftReferralText(input);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Referral drafting failed.";
-    back(msg);
+  } catch {
+    draftText = fallbackReferralText(input);
   }
 
   await insertReferralDraft({
@@ -94,10 +94,10 @@ export async function saveReferralDraft(fd: FormData): Promise<void> {
   const referralId = String(fd.get("referralId"));
   const draftText = fdStr(fd, "draftText");
 
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/women/${caseId}?referError=${encodeURIComponent(msg)}`);
   if (!draftText) back("The referral draft cannot be empty.");
-  const ok = await saveReferralDraftText(referralId, draftText);
+  const ok = await saveReferralDraftText(referralId, draftText!);
   if (!ok) back("Only draft referrals can be edited — sent referrals never change.");
   revalidatePath(`/women/${caseId}`);
 }

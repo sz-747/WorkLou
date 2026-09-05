@@ -15,12 +15,14 @@ import { caseContexts, serviceAttributes, services, type CaseContext } from "../
 
 /** A single stored service fact (provenance + freshness included). */
 export type FactRow = {
+  id?: string;
   attrType: string;
   key: string;
   value: string;
   sourceType: string;
   sourceName: string | null;
   retrievedAt: Date | string | null;
+  expiresAt?: Date | string | null;
   verificationStatus: string;
   confirmedBy: string | null;
   confirmedAt: Date | string | null;
@@ -75,14 +77,28 @@ function attr(service: ServiceCandidate, attrType: string, key: string): FactRow
   return service.attributes.find((a) => a.attrType === attrType && a.key === key);
 }
 
-function factStatus(fact: FactRow): CriterionStatus {
-  if (fact.verificationStatus === "stale") return "stale";
+function factStatus(fact: FactRow, now: Date = new Date()): CriterionStatus {
+  if (
+    fact.verificationStatus === "stale" ||
+    (fact.expiresAt && new Date(fact.expiresAt).getTime() <= now.getTime())
+  ) return "stale";
   if (fact.verificationStatus === "needs_provider_confirmation") return "needs_provider_confirmation";
   return "matched";
 }
 
+function locationKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
+function geographyMatches(context: CaseContext, service: ServiceCandidate): boolean {
+  if (!service.catchment) return false;
+  const wanted = [context.suburb, context.catchment].filter((value): value is string => !!value);
+  const offered = service.catchment.split(/[;,|]/).map(locationKey).filter(Boolean);
+  return wanted.map(locationKey).some((value) => offered.includes(value));
+}
+
 /** Evaluate one service against the approved context. Pure. */
-export function evaluateService(context: CaseContext, service: ServiceCandidate): MatchResult {
+export function evaluateService(context: CaseContext, service: ServiceCandidate, now: Date = new Date()): MatchResult {
   const criteria: Criterion[] = [];
   const hardExclusions: string[] = [];
   const matchedNeeds: string[] = [];
@@ -97,7 +113,7 @@ export function evaluateService(context: CaseContext, service: ServiceCandidate)
       matchedNeeds.push(need);
       criteria.push({
         criterion: `need: ${need}`,
-        status: factStatus(needFact),
+        status: factStatus(needFact, now),
         value: needFact.value,
         detail: `provides ${need}`,
         fact: needFact,
@@ -107,6 +123,23 @@ export function evaluateService(context: CaseContext, service: ServiceCandidate)
   const offeredNeeds = service.attributes
     .filter((a) => a.attrType === "need" && a.key === "need")
     .map((a) => a.value);
+
+  // Geography is a ranking preference, not a hard exclusion: catchment data
+  // may be incomplete, but an exact recorded match should win a tie.
+  if (context.suburb || context.catchment) {
+    const matches = geographyMatches(context, service);
+    criteria.push({
+      criterion: "geography",
+      status: matches ? "matched" : service.catchment ? "mismatch" : "not_recorded",
+      value: service.catchment,
+      detail: matches
+        ? `recorded catchment matches ${context.suburb ?? context.catchment}`
+        : service.catchment
+          ? `recorded catchment: ${service.catchment}`
+          : "catchment not recorded",
+      fact: null,
+    });
+  }
 
   // --- children (only evaluated if the client has children) ---
   if (context.children && context.children.count > 0) {
@@ -124,12 +157,12 @@ export function evaluateService(context: CaseContext, service: ServiceCandidate)
     } else if (["welcome", "allowed", "yes"].includes(fact.value)) {
       criteria.push({
         criterion: "children",
-        status: factStatus(fact),
+        status: factStatus(fact, now),
         value: fact.value,
         detail: `children ${fact.value}`,
         fact,
       });
-    } else if (["no", "not_accepted", "no_children"].includes(fact.value)) {
+    } else if (["no", "not_accepted", "not_allowed", "no_children"].includes(fact.value)) {
       hardExclusions.push(`children not accepted (children: ${fact.value})`);
       criteria.push({
         criterion: "children",
@@ -155,7 +188,7 @@ export function evaluateService(context: CaseContext, service: ServiceCandidate)
         fact: fact ?? null,
       });
     } else if (["welcome", "allowed", "yes", "negotiable"].includes(fact.value)) {
-      criteria.push({ criterion: "pets", status: factStatus(fact), value: fact.value, detail: `pets ${fact.value}`, fact });
+      criteria.push({ criterion: "pets", status: factStatus(fact, now), value: fact.value, detail: `pets ${fact.value}`, fact });
     } else if (["no", "not_allowed", "no_pets"].includes(fact.value)) {
       hardExclusions.push(`pets not accepted (pets: ${fact.value})`);
       criteria.push({ criterion: "pets", status: "mismatch", value: fact.value, detail: `pets ${fact.value} — client has a pet`, fact });
@@ -176,36 +209,45 @@ export function evaluateService(context: CaseContext, service: ServiceCandidate)
         fact: fact ?? null,
       });
     } else if (fact.value === "no_restrictions") {
-      criteria.push({ criterion: "visa", status: factStatus(fact), value: fact.value, detail: "no visa restrictions", fact });
-    } else {
-      // a recorded restriction (e.g. 'citizens_only') excludes the client
+      criteria.push({ criterion: "visa", status: factStatus(fact, now), value: fact.value, detail: "no visa restrictions", fact });
+    } else if (["citizens_only", "permanent_residents_only", "no_temporary_visa"].includes(fact.value)) {
       hardExclusions.push(`visa restricted (visa: ${fact.value}; client visa: ${context.visa})`);
       criteria.push({ criterion: "visa", status: "mismatch", value: fact.value, detail: `visa restriction: ${fact.value} — client on ${context.visa}`, fact });
+    } else {
+      criteria.push({
+        criterion: "visa",
+        status: "needs_provider_confirmation",
+        value: fact.value,
+        detail: `visa policy is conditional (${fact.value}) — confirm for ${context.visa}`,
+        fact,
+      });
     }
   }
 
   // --- languages (flagged, never a hard exclusion on its own) ---
   if (context.languages.length > 0) {
-    const fact = service.attributes.find((a) => a.key === "languages");
-    if (!fact || fact.value === "unknown") {
+    const languageFacts = service.attributes.filter((a) => a.key === "languages");
+    const fact = languageFacts.find((item) => context.languages.includes(item.value));
+    const unknown = languageFacts.find((item) => item.value === "unknown");
+    if (fact) {
+      criteria.push({ criterion: "languages", status: factStatus(fact, now), value: fact.value, detail: `supports ${fact.value}`, fact });
+    } else if (languageFacts.length === 0 || unknown) {
       criteria.push({
         criterion: "languages",
-        status: fact ? "needs_provider_confirmation" : "not_recorded",
-        value: fact?.value ?? null,
-        detail: fact
+        status: unknown ? "needs_provider_confirmation" : "not_recorded",
+        value: unknown?.value ?? null,
+        detail: unknown
           ? "language support unknown — needs provider confirmation"
           : "language support unknown — not recorded for this service",
-        fact: fact ?? null,
+        fact: unknown ?? null,
       });
-    } else if (context.languages.includes(fact.value)) {
-      criteria.push({ criterion: "languages", status: factStatus(fact), value: fact.value, detail: `supports ${fact.value}`, fact });
     } else {
       criteria.push({
         criterion: "languages",
         status: "mismatch",
-        value: fact.value,
-        detail: `recorded language: ${fact.value}; client speaks ${context.languages.join(", ")} — confirm interpretation options`,
-        fact,
+        value: languageFacts.map((item) => item.value).join(", "),
+        detail: `recorded languages: ${languageFacts.map((item) => item.value).join(", ")}; client speaks ${context.languages.join(", ")} — confirm interpretation options`,
+        fact: languageFacts[0],
       });
     }
   }
@@ -223,10 +265,18 @@ export function evaluateService(context: CaseContext, service: ServiceCandidate)
           : "income eligibility unknown — not recorded for this service",
         fact: fact ?? null,
       });
+    } else if (fact.value === "nil_income_considered") {
+      criteria.push({
+        criterion: "income",
+        status: "needs_provider_confirmation",
+        value: fact.value,
+        detail: `nil income is considered — confirm eligibility for this case`,
+        fact,
+      });
     } else if (fact.value === context.income.status) {
       criteria.push({
         criterion: "income",
-        status: factStatus(fact),
+        status: factStatus(fact, now),
         value: fact.value,
         detail: `income eligibility "${fact.value}" — matches client`,
         fact,
@@ -256,7 +306,42 @@ export function evaluateService(context: CaseContext, service: ServiceCandidate)
         fact: fact ?? null,
       });
     } else {
-      criteria.push({ criterion: "wait time", status: factStatus(fact), value: fact.value, detail: `wait time: ${fact.value}`, fact });
+      criteria.push({ criterion: "wait time", status: factStatus(fact, now), value: fact.value, detail: `wait time: ${fact.value}`, fact });
+    }
+  }
+
+  // Capacity is volatile. A current "full" report excludes; an expired
+  // report is only a prompt to re-check and never decides suitability.
+  if (context.needs.includes("housing_accommodation")) {
+    const delivery = attr(service, "delivery", "format");
+    if (delivery) {
+      criteria.push({
+        criterion: "delivery",
+        status: factStatus(delivery, now),
+        value: delivery.value,
+        detail: `delivery format: ${delivery.value}`,
+        fact: delivery,
+      });
+    }
+    const fact = attr(service, "delivery", "capacity");
+    if (fact) {
+      const status = factStatus(fact, now);
+      if (status === "stale") {
+        criteria.push({
+          criterion: "capacity",
+          status,
+          value: fact.value,
+          detail: `capacity report expired — refresh or confirm with provider`,
+          fact,
+        });
+      } else if (fact.value === "full") {
+        hardExclusions.push("currently reported full");
+        criteria.push({ criterion: "capacity", status: "mismatch", value: fact.value, detail: "currently reported full", fact });
+      } else if (fact.value === "reported_available") {
+        criteria.push({ criterion: "capacity", status, value: fact.value, detail: "capacity reported available", fact });
+      } else {
+        criteria.push({ criterion: "capacity", status: "needs_provider_confirmation", value: fact.value, detail: "current capacity unknown", fact });
+      }
     }
   }
 
@@ -285,17 +370,35 @@ function freshnessScore(result: MatchResult): number {
   );
 }
 
+function geographyScore(result: MatchResult): number {
+  return result.criteria.some(
+    (criterion) => criterion.criterion === "geography" && criterion.status === "matched",
+  )
+    ? 1
+    : 0;
+}
+
+function deliveryScore(result: MatchResult): number {
+  const value = result.criteria.find((criterion) => criterion.criterion === "delivery")?.value;
+  if (value === "crisis_accommodation") return 2;
+  if (value === "referral_only" || value === "referral_service") return 1;
+  return 0;
+}
+
 /**
  * Evaluate + rank all services. Pure. Deterministic order: matched needs,
  * then fact freshness (provider_confirmed > verified_machine > stale),
  * then name. No scores are exposed to the UI.
  */
-export function matchServices(context: CaseContext, candidates: ServiceCandidate[]): MatchResult[] {
+export function matchServices(context: CaseContext, candidates: ServiceCandidate[], now: Date = new Date()): MatchResult[] {
   return candidates
-    .map((c) => evaluateService(context, c))
+    .map((c) => evaluateService(context, c, now))
     .sort(
       (a, b) =>
+        Number(b.suitable) - Number(a.suitable) ||
         b.matchedNeeds.length - a.matchedNeeds.length ||
+        geographyScore(b) - geographyScore(a) ||
+        deliveryScore(b) - deliveryScore(a) ||
         freshnessScore(b) - freshnessScore(a) ||
         a.service.name.localeCompare(b.service.name),
     );

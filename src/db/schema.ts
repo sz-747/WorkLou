@@ -9,6 +9,7 @@ import {
   date,
   check,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -81,6 +82,7 @@ export const serviceAttributes = pgTable(
     sourceName: text("source_name"),
     sourceUrl: text("source_url"),
     retrievedAt: timestamp("retrieved_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
     verificationStatus: text("verification_status").notNull(),
     confirmedBy: text("confirmed_by"),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
@@ -280,9 +282,56 @@ export const cases = pgTable("cases", {
   id: uuid("id").defaultRandom().primaryKey(),
   clientRef: text("client_ref").notNull(),
   originalNotes: text("original_notes").notNull(),
+  appointmentAt: timestamp("appointment_at", { withTimezone: true }).notNull().defaultNow(),
   status: text("status").notNull().default("open"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Append-only record of every raw-note version submitted for extraction. */
+export const caseNoteRevisions = pgTable(
+  "case_note_revisions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    caseId: uuid("case_id")
+      .notNull()
+      .references(() => cases.id, { onDelete: "cascade" }),
+    notes: text("notes").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("case_note_revisions_case_idx").on(t.caseId, t.recordedAt)],
+);
+
+/**
+ * Case-specific, append-only audit trail of provider confirmations. The
+ * shared service fact may be refreshed for reuse, but documentation reads
+ * these events so another case's phone call can never leak into this case.
+ */
+export const providerConfirmationEvents = pgTable(
+  "provider_confirmation_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    caseId: uuid("case_id")
+      .notNull()
+      .references(() => cases.id, { onDelete: "cascade" }),
+    serviceId: uuid("service_id")
+      .notNull()
+      .references(() => services.id, { onDelete: "cascade" }),
+    attributeId: uuid("attribute_id").references(() => serviceAttributes.id, {
+      onDelete: "set null",
+    }),
+    attrType: text("attr_type").notNull(),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    confirmedBy: text("confirmed_by").notNull(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }).notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("provider_confirmation_events_case_idx").on(t.caseId, t.confirmedAt),
+    index("provider_confirmation_events_service_idx").on(t.serviceId, t.confirmedAt),
+  ],
+);
 
 export const caseContexts = pgTable(
   "case_contexts",
@@ -291,6 +340,9 @@ export const caseContexts = pgTable(
     caseId: uuid("case_id")
       .notNull()
       .references(() => cases.id, { onDelete: "cascade" }),
+    noteRevisionId: uuid("note_revision_id").references(() => caseNoteRevisions.id, {
+      onDelete: "set null",
+    }),
     version: integer("version").notNull(),
     context: jsonb("context").$type<CaseContext>().notNull(),
     status: text("status").notNull().default("draft"),
@@ -299,7 +351,7 @@ export const caseContexts = pgTable(
   },
   (t) => [
     check("case_contexts_status_check", sql`${t.status} in ('draft','approved')`),
-    index("case_contexts_case_idx").on(t.caseId, t.version),
+    uniqueIndex("case_contexts_case_version_idx").on(t.caseId, t.version),
   ],
 );
 

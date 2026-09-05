@@ -10,9 +10,10 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { referrals, serviceAttributes, services, type CaseContext, type FieldSource } from "../db/schema";
 import { CONTEXT_FIELDS, fieldHasValue, fieldSourceOf, fieldValuePreview } from "./context-fields";
-import { chatCompletionsUrl } from "./extraction";
+import { chatCompletionsUrl, fetchLlm } from "./extraction";
 import { isKnownFact, factLabel } from "./verify";
 import type { FactRow } from "./matching";
+import { addSydneyCalendarDays } from "./dates";
 
 export type SharedItem = {
   key: string;
@@ -92,7 +93,7 @@ export async function draftReferralText(input: ReferralDraftInput): Promise<stri
     throw new Error("LLM not configured (LLM_BASE_URL / LLM_API_KEY / LLM_MODEL missing)");
   }
 
-  const res = await fetch(chatCompletionsUrl(base), {
+  const res = await fetchLlm(chatCompletionsUrl(base), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -119,11 +120,29 @@ export async function draftReferralText(input: ReferralDraftInput): Promise<stri
   return content.trim();
 }
 
-/** Default next-follow-up date: one week from now (worker-editable in the form). */
-export function defaultFollowUpDate(now: Date = new Date()): string {
-  const d = new Date(now);
-  d.setDate(d.getDate() + 7);
-  return d.toISOString().slice(0, 10);
+/** Deterministic worker-editable draft used when the LLM is unavailable. */
+export function fallbackReferralText(input: ReferralDraftInput): string {
+  const lines = [
+    `Hello ${input.service.name},`,
+    "",
+    "About the woman (as she stated):",
+    ...input.womanStated.map((item) => `- ${item.label}: ${item.value}`),
+  ];
+  if (input.workerObservations.length > 0) {
+    lines.push(
+      "",
+      "Caseworker observations:",
+      ...input.workerObservations.map((item) => `- ${item.label}: ${item.value}`),
+    );
+  }
+  lines.push("", "Please assess whether this service is suitable for referral.");
+  return lines.join("\n");
+}
+
+/** Routine referrals are checked after five days; crisis/high urgency is checked daily. */
+export function defaultFollowUpDate(now: Date = new Date(), urgency: string | null = null): string {
+  const urgent = urgency?.toLowerCase().includes("high") || urgency?.toLowerCase().includes("crisis");
+  return addSydneyCalendarDays(now, urgent ? 1 : 5);
 }
 
 /** Insert a referral draft row (status 'draft'). */

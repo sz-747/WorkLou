@@ -36,7 +36,7 @@ const context: CaseContext = {
   catchment: null,
   children: { count: 2 },
   pets: { has_pet: true, details: "dog" },
-  income: { status: "low", source: null },
+  income: { status: "low" },
   visa: "student",
   languages: ["english"],
   urgency: "high",
@@ -58,6 +58,8 @@ async function main() {
       phone: "02 0000 0000",
       sourceType: "excel_import",
       sourceName: "Lous Place Service List (Excel) v3",
+      createdAt: daysAgo(1),
+      updatedAt: daysAgo(1),
     })
     .returning();
 
@@ -172,7 +174,7 @@ async function main() {
   assert(
     "corrected pets fact now hard-excludes the service (was suitable before the correction)",
     !result.suitable &&
-      result.reason?.includes("pets not accepted") &&
+      result.reason?.includes("pets not accepted") === true &&
       petsCriterion?.status === "mismatch" &&
       petsCriterion?.fact?.value === "not_allowed",
   );

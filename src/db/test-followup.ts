@@ -22,7 +22,9 @@ import {
   recordProviderResponse,
   referralIsOpen,
   storeFollowUpDraft,
+  fallbackFollowUpText,
 } from "../lib/followup";
+import { sydneyDate } from "../lib/dates";
 
 let passed = 0;
 let failed = 0;
@@ -42,7 +44,7 @@ const daysFromNow = (d: number) => {
   x.setDate(x.getDate() + d);
   return x.toISOString().slice(0, 10);
 };
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => sydneyDate(new Date());
 
 const context = {
   needs: ["housing_accommodation"],
@@ -72,9 +74,10 @@ async function main() {
   );
   assert("invalid outcome values rejected", !isValidOutcome("nope") && !isValidOutcome(""));
   assert(
-    "awaiting reply is the only non-final outcome (keeps referral open); others close it",
+    "awaiting reply and accepted remain open; support received and terminal rejections close",
     !isFinalOutcome("awaiting_reply") &&
-      ["accepted", "declined", "referred_elsewhere", "support_received"].every(isFinalOutcome),
+      !isFinalOutcome("accepted") &&
+      ["declined", "referred_elsewhere", "support_received"].every(isFinalOutcome),
   );
   assert(
     "support received has its own label, distinct from accepted",
@@ -106,7 +109,7 @@ async function main() {
     "draft input carries service, case ref, sent date, referral text, status",
     draftInput.serviceName === "Watershed Women's Crisis Accommodation" &&
       draftInput.clientRef === "CASE-2026-001" &&
-      draftInput.sentAt === new Date(daysAgo(3)).toISOString().slice(0, 10) &&
+      draftInput.sentAt === sydneyDate(daysAgo(3)) &&
       draftInput.referralText === "Referral text that was sent to the provider." &&
       draftInput.status === "responded",
   );
@@ -216,6 +219,23 @@ async function main() {
     "awaiting-reply referral with due follow-up still listed in My Work",
     (await getDueFollowUps()).some((f) => f.referralId === dueReferralId && f.outcome === "awaiting_reply"),
   );
+  assert(
+    "deterministic follow-up fallback names only the stored service, case and sent date",
+    fallbackFollowUpText(draftInput).includes("CASE-2026-001") &&
+      fallbackFollowUpText(draftInput).includes("Watershed Women's Crisis Accommodation"),
+  );
+
+  // accepted is promising, but remains open until support is actually received
+  const accepted = await recordOutcome(dueReferralId, "accepted", "Place offered; move-in pending.");
+  const [afterAccepted] = await db.select().from(referrals).where(eq(referrals.id, dueReferralId));
+  assert(
+    "accepted referral remains open and due until support is actually received",
+    accepted &&
+      afterAccepted.outcome === "accepted" &&
+      afterAccepted.status === "responded" &&
+      referralIsOpen(afterAccepted.status) &&
+      (await getDueFollowUps()).some((f) => f.referralId === dueReferralId),
+  );
 
   // final outcome closes it
   const sr = await recordOutcome(dueReferralId, "support_received", "Woman moved in on Monday.");
@@ -249,7 +269,7 @@ async function main() {
     .map((e) => new Date(e.occurredAt).getTime());
   assert(
     "case-level timeline query returns events for the case in chronological order",
-    caseEvents.length === 5 && dueEventTimes.every((t, i) => i === 0 || t >= dueEventTimes[i - 1]),
+    caseEvents.length === 6 && dueEventTimes.every((t, i) => i === 0 || t >= dueEventTimes[i - 1]),
   );
 
   // ---------- CLEANUP ----------

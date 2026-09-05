@@ -25,7 +25,8 @@ export type SerpResult = {
   snippet: string | null;
 };
 
-type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
+type FetchResponseLike = Pick<Response, "ok" | "status" | "text" | "json">;
+type FetchLike = (url: string, init: RequestInit) => Promise<FetchResponseLike>;
 type AdapterDeps = { fetchImpl?: FetchLike; timeoutMs?: number };
 
 async function brightDataRequest(

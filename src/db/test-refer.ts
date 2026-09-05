@@ -20,6 +20,7 @@ import {
   markReferralSent,
   saveReferralDraftText,
   findActiveReferralForService,
+  fallbackReferralText,
 } from "../lib/refer";
 import type { FactRow } from "../lib/matching";
 
@@ -162,8 +163,19 @@ async function main() {
 
   const fixed = new Date("2026-09-05T10:00:00Z");
   assert(
-    "default follow-up date is one week out (worker-editable in the form)",
-    defaultFollowUpDate(fixed) === "2026-09-12",
+    "routine follow-up is five Sydney calendar days out",
+    defaultFollowUpDate(fixed) === "2026-09-10",
+  );
+  const fallbackDraft = fallbackReferralText(input);
+  assert(
+    "deterministic fallback remains usable and cannot reintroduce unshared fields",
+    fallbackDraft.includes("About the woman (as she stated):") &&
+      !fallbackDraft.includes("bridging_e") &&
+      !fallbackDraft.includes("dog"),
+  );
+  assert(
+    "high-urgency follow-up is next Sydney calendar day, including after UTC date rollover",
+    defaultFollowUpDate(new Date("2026-09-05T15:25:00Z"), "high") === "2026-09-07",
   );
 
   // ---------- DB FLOW: draft → edit → sent → reload preserves ----------
@@ -244,7 +256,7 @@ async function main() {
     sent &&
       afterSent.status === "sent" &&
       !!afterSent.sentAt &&
-      afterSent.followUpDue === "2026-09-12",
+      afterSent.followUpDue === "2026-09-10",
   );
 
   // fresh query = reload: everything preserved
@@ -253,7 +265,7 @@ async function main() {
     "reload preserves the sent referral state end to end",
     reloaded[0].status === "sent" &&
       reloaded[0].draftText === "Edited by worker before sending." &&
-      reloaded[0].followUpDue === "2026-09-12" &&
+      reloaded[0].followUpDue === "2026-09-10" &&
       !!reloaded[0].sentAt,
   );
 
@@ -266,7 +278,7 @@ async function main() {
     guardEdit === false &&
       guardSent === false &&
       guarded.draftText === "Edited by worker before sending." &&
-      guarded.followUpDue === "2026-09-12" &&
+      guarded.followUpDue === "2026-09-10" &&
       new Date(guarded.sentAt as Date).getTime() === new Date(reloaded[0].sentAt as Date).getTime(),
   );
 

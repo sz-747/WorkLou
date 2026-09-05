@@ -105,10 +105,11 @@ export function parseExtraction(raw: string): CaseContext {
   if (typeof data.income === "string") income = { status: toSnakeCase(data.income) };
   else if (data.income && typeof data.income === "object") {
     const i = data.income as Record<string, unknown>;
-    income = { status: toStr(i.status), source: toStr(i.source) };
+    income = { status: toStr(i.status) ?? undefined, source: toStr(i.source) ?? undefined };
   }
 
   const urgency = toStr(data.urgency)?.toLowerCase();
+  const safeContactMethod = toStr(data.safe_contact_method);
   const needs = toStringArray(data.needs);
 
   const context: CaseContext = {
@@ -122,9 +123,7 @@ export function parseExtraction(raw: string): CaseContext {
     languages: toStringArray(data.languages),
     urgency: urgency && ["high", "medium", "low"].includes(urgency) ? urgency : null,
     safety_preferences: toStr(data.safety_preferences),
-    safe_contact_method: toStr(data.safe_contact_method)
-      ? toSnakeCase(data.safe_contact_method)
-      : null,
+    safe_contact_method: safeContactMethod ? toSnakeCase(safeContactMethod) : null,
     summary: toStr(data.summary),
   };
 
@@ -150,6 +149,38 @@ export function chatCompletionsUrl(base: string): string {
   return `${trimmed}/v1/chat/completions`;
 }
 
+export function emptyCaseContext(): CaseContext {
+  return {
+    needs: [],
+    suburb: null,
+    catchment: null,
+    children: null,
+    pets: null,
+    income: null,
+    visa: null,
+    languages: [],
+    urgency: null,
+    safety_preferences: null,
+    safe_contact_method: null,
+    summary: null,
+    field_sources: {},
+  };
+}
+
+/** All LLM requests fail promptly instead of leaving a caseworker waiting indefinitely. */
+export async function fetchLlm(url: string, init: RequestInit): Promise<Response> {
+  const configured = Number(process.env.LLM_TIMEOUT_MS ?? "15000");
+  const timeoutMs = Number.isFinite(configured) && configured > 0 ? configured : 15000;
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new Error(`LLM request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
 /** Call the configured LLM and return the extracted context + model provenance. */
 export async function extractContextFromNotes(
   notes: string,
@@ -161,7 +192,7 @@ export async function extractContextFromNotes(
     throw new Error("LLM not configured (LLM_BASE_URL / LLM_API_KEY / LLM_MODEL missing)");
   }
 
-  const res = await fetch(chatCompletionsUrl(base), {
+  const res = await fetchLlm(chatCompletionsUrl(base), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

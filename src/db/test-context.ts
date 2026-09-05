@@ -4,9 +4,10 @@
  */
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "./index";
-import { caseContexts, cases, type CaseContext } from "./schema";
-import { parseExtraction } from "../lib/extraction";
+import { caseContexts, caseNoteRevisions, cases, type CaseContext } from "./schema";
+import { emptyCaseContext, parseExtraction } from "../lib/extraction";
 import { contextFromFormData } from "../lib/context-form";
+import { getNotesForContext, recordCaseNotes } from "../lib/case-notes";
 
 let passed = 0;
 let failed = 0;
@@ -142,13 +143,27 @@ async function main() {
     })
     .returning();
 
-  // raw notes persist on the case
-  await db
-    .update(cases)
-    .set({ originalNotes: "Updated test notes — needs housing urgently, two kids, cat." })
-    .where(eq(cases.id, testCase.id));
+  // raw notes persist as a current snapshot and immutable history
+  await recordCaseNotes(testCase.id, "Updated test notes — needs housing urgently, two kids, cat.");
+  const secondRevisionId = await recordCaseNotes(testCase.id, "Second note version — corrected pet to dog.");
   const [caseAfterNotes] = await db.select().from(cases).where(eq(cases.id, testCase.id));
-  assert("rough notes persist on the case", caseAfterNotes.originalNotes.startsWith("Updated test notes"));
+  const noteHistory = await db
+    .select()
+    .from(caseNoteRevisions)
+    .where(eq(caseNoteRevisions.caseId, testCase.id))
+    .orderBy(caseNoteRevisions.recordedAt);
+  assert(
+    "raw-note edits keep an immutable history while the case shows the latest snapshot",
+    caseAfterNotes.originalNotes === "Second note version — corrected pet to dog." &&
+      noteHistory.length === 2 &&
+      noteHistory[0].notes.startsWith("Updated test notes") &&
+      noteHistory[1].notes.startsWith("Second note version"),
+  );
+  const manual = emptyCaseContext();
+  assert(
+    "manual fallback context is empty, editable, and never invents facts",
+    manual.needs.length === 0 && manual.languages.length === 0 && manual.summary === null,
+  );
 
   // extraction creates a NEW draft version (v1)
   const draftContext: CaseContext = {
@@ -169,6 +184,7 @@ async function main() {
     .insert(caseContexts)
     .values({
       caseId: testCase.id,
+      noteRevisionId: secondRevisionId,
       version: 1,
       context: draftContext,
       status: "draft",
@@ -176,6 +192,7 @@ async function main() {
     })
     .returning();
   assert("extraction saved as clearly-marked draft", v1.status === "draft" && v1.extractionModel === "test-model");
+  assert("context is linked to the exact raw-note revision it was extracted from", v1.noteRevisionId === secondRevisionId);
   assert("draft has no approved_at", v1.approvedAt === null);
 
   // worker edits the draft in place (draft rows only)
@@ -195,6 +212,12 @@ async function main() {
     .where(and(eq(caseContexts.id, v1.id), eq(caseContexts.status, "draft")));
   const [v1Approved] = await db.select().from(caseContexts).where(eq(caseContexts.id, v1.id));
   assert("approval state persists with timestamp", v1Approved.status === "approved" && !!v1Approved.approvedAt);
+  const thirdRevisionId = await recordCaseNotes(testCase.id, "New notes for a later, unapproved extraction.");
+  assert(
+    "approved context keeps its own notes when the case receives newer raw notes",
+    (await getNotesForContext(testCase.id, v1Approved.noteRevisionId)) ===
+      "Second note version — corrected pet to dog.",
+  );
 
   // guard: editing with the draft-only guard must NOT touch the approved row
   const guardedEdit: CaseContext = { ...edited, suburb: "SHOULD NOT APPLY" };
@@ -210,6 +233,7 @@ async function main() {
     .insert(caseContexts)
     .values({
       caseId: testCase.id,
+      noteRevisionId: thirdRevisionId,
       version: 2,
       context: { ...edited, urgency: "high" },
       status: "draft",

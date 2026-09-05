@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -p 3000 -H 0.0.0.0",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
     "db:test": "tsx src/db/test.ts",
@@ -17,7 +19,8 @@
     "db:test:updater": "tsx src/db/test-updater.ts",
     "db:test:brightdata": "tsx src/db/test-brightdata.ts",
     "db:test:discovery": "tsx src/db/test-discovery.ts",
-    "db:test:spreadsheet": "tsx src/db/test-spreadsheet.ts"
+    "db:test:spreadsheet": "tsx src/db/test-spreadsheet.ts",
+    "eval:workflows": "tsx src/db/eval-workflows.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.0",

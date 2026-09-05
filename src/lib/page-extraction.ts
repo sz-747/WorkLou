@@ -7,7 +7,7 @@
  * actually states may be extracted — the prompt forbids invention and the
  * output is validated by the shared normaliser.
  */
-import { chatCompletionsUrl } from "./extraction";
+import { chatCompletionsUrl, fetchLlm } from "./extraction";
 import { normaliseFacts, type SourceFact } from "./source-facts";
 
 const SYSTEM_PROMPT = `You extract structured facts about community support services from a provider organisation's web page.
@@ -39,7 +39,7 @@ export async function extractFactsFromPage(
     );
   }
 
-  const res = await fetch(chatCompletionsUrl(base), {
+  const res = await fetchLlm(chatCompletionsUrl(base), {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({

@@ -102,13 +102,13 @@ async function main() {
   // --- Service attributes (each with source + freshness) ---
 
   await db.insert(serviceAttributes).values([
-    // Watershed: excel-imported facts; pets is genuinely provider-only
+    // Watershed: synthetic spreadsheet facts; availability stays time-sensitive.
     { serviceId: watershed.id, attrType: "need", key: "need", value: "housing_accommodation", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(45), verificationStatus: "verified_machine", notes: "Imported from Excel; confirm details directly when referring." },
     { serviceId: watershed.id, attrType: "need", key: "need", value: "dfv_safety", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(45), verificationStatus: "verified_machine" },
     { serviceId: watershed.id, attrType: "eligibility", key: "children", value: "welcome", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(45), verificationStatus: "verified_machine" },
-    { serviceId: watershed.id, attrType: "eligibility", key: "pets", value: "unknown", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(45), verificationStatus: "needs_provider_confirmation", notes: "Pet policy genuinely requires direct provider confirmation." },
+    { serviceId: watershed.id, attrType: "eligibility", key: "pets", value: "negotiable", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(45), verificationStatus: "verified_machine", notes: "Synthetic spreadsheet states pets are considered case-by-case." },
     { serviceId: watershed.id, attrType: "cost", key: "cost", value: "free", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(120), verificationStatus: "stale" },
-    { serviceId: watershed.id, attrType: "wait_time", key: "wait_time", value: "2-4 weeks", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(120), verificationStatus: "stale" },
+    { serviceId: watershed.id, attrType: "wait_time", key: "wait_time", value: "2-3 weeks", sourceType: "excel_import", sourceName: "Lous Place Service List (Excel) v3", retrievedAt: daysAgo(120), verificationStatus: "stale" },
 
     // Southside: machine-source facts, fresh
     { serviceId: southside.id, attrType: "need", key: "need", value: "legal", sourceType: "machine", sourceName: "Southside website — snapshot", sourceUrl: "https://southsidedfv.example.org/services", retrievedAt: daysAgo(3), verificationStatus: "verified_machine" },

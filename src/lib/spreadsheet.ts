@@ -44,12 +44,19 @@ export type MappedRow = {
   raw: Record<string, string>;
 };
 
+export type SpreadsheetFact = {
+  attrType: "eligibility" | "delivery" | "access";
+  key: string;
+  value: string;
+  expiresAt?: Date | null;
+};
+
 /** Header aliases (lowercased before matching). */
 const HEADER_ALIASES: Record<string, string> = {
   "service name": "name",
   name: "name",
   service: "name",
-  provider: "name",
+  provider: "organisation",
   organisation: "organisation",
   organization: "organisation",
   org: "organisation",
@@ -67,9 +74,12 @@ const HEADER_ALIASES: Record<string, string> = {
   address: "address",
   location: "address",
   suburb: "address",
+  location_area: "address",
   catchment: "catchment",
   area: "catchment",
   region: "catchment",
+  regions: "catchment",
+  catchment_lgas: "catchment",
   "what they help with": "needs",
   needs: "needs",
   "needs help with": "needs",
@@ -118,6 +128,116 @@ export function normaliseNeedToken(label: string): string | null {
   const cleaned = label.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.,;]$/, "");
   if (!cleaned) return null;
   return NEEDS_ALIASES[cleaned] ?? cleaned.replace(/[\s/-]+/g, "_");
+}
+
+function splitTokens(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(";")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function firstValue(value: string | undefined): string | null {
+  return value?.split(";").map((part) => part.trim()).find(Boolean) ?? null;
+}
+
+/** Exact prototype columns that state a service capability, not mere text mentions. */
+function prototypeNeeds(raw: Record<string, string>): string[] {
+  const serviceType = raw.service_type?.trim().toLowerCase();
+  const delivery = splitTokens(raw.accommodation_delivery);
+  const needs: string[] = [];
+  if (
+    serviceType === "crisis_accommodation" ||
+    serviceType === "referral_only" ||
+    delivery.some((value) =>
+      [
+        "crisis_accommodation",
+        "published_accommodation_component",
+        "transitional_housing_listed",
+        "referral_service",
+        "referral_only",
+      ].includes(value),
+    )
+  ) {
+    needs.push("housing_accommodation");
+  }
+  if (serviceType === "residential_rehabilitation") needs.push("aod");
+  return needs;
+}
+
+function policyValue(value: string | undefined, allowed: string[], excluded: string[]): string {
+  const normalised = value?.trim().toLowerCase() ?? "";
+  if (allowed.includes(normalised)) return "allowed";
+  if (excluded.includes(normalised)) return "not_allowed";
+  return "unknown";
+}
+
+/** Typed facts from exact prototype columns. Unclear prose remains `unknown`. */
+export function mapPrototypeFacts(raw: Record<string, string>): SpreadsheetFact[] {
+  const facts: SpreadsheetFact[] = [];
+  const add = (attrType: SpreadsheetFact["attrType"], key: string, value: string) =>
+    facts.push({ attrType, key, value });
+
+  if ("women_with_children" in raw) {
+    add(
+      "eligibility",
+      "children",
+      policyValue(
+        raw.women_with_children,
+        ["accepted", "yes", "included_in_published_service_scope"],
+        ["not_accepted", "no"],
+      ),
+    );
+  }
+  if ("pets_on_site" in raw) {
+    add(
+      "eligibility",
+      "pets",
+      policyValue(raw.pets_on_site, ["allowed", "yes"], ["not_allowed", "no"]),
+    );
+  }
+  if ("visa_policy" in raw) {
+    const visa = raw.visa_policy.trim().toLowerCase();
+    add(
+      "eligibility",
+      "visa",
+      visa === "temporary_visa_considered"
+        ? "temporary_visa_considered"
+        : visa.includes("regardless of residency or visa")
+          ? "no_restrictions"
+          : "unknown",
+    );
+  }
+  if ("nil_income_policy" in raw) {
+    const income = raw.nil_income_policy.trim().toLowerCase();
+    add(
+      "eligibility",
+      "income",
+      income === "nil_income_considered"
+        ? "nil_income_considered"
+        : income.includes("regardless of income")
+          ? "no_income"
+        : "unknown",
+    );
+  }
+  if (raw.accommodation_delivery?.trim()) {
+    add("delivery", "format", raw.accommodation_delivery.trim().toLowerCase());
+  }
+  if ("wheelchair_access" in raw) {
+    add(
+      "access",
+      "wheelchair",
+      policyValue(raw.wheelchair_access, ["accessible"], ["not_accessible"]),
+    );
+  }
+  if ("capacity_status" in raw) {
+    const expiry = raw.capacity_expires_at?.trim();
+    add("delivery", "capacity", raw.capacity_status.trim().toLowerCase() || "unknown");
+    facts[facts.length - 1].expiresAt = expiry && Number.isFinite(Date.parse(expiry))
+      ? new Date(expiry)
+      : null;
+  }
+  return facts;
 }
 
 /**
@@ -189,7 +309,7 @@ export function mapSpreadsheetRow(headers: string[], row: string[]): MappedRow |
     .split(/[;,/]/)
     .map((n) => normaliseNeedToken(n))
     .filter((n): n is string => n !== null);
-  const uniqueNeeds = [...new Set(needs)];
+  const uniqueNeeds = [...new Set([...needs, ...prototypeNeeds(raw)])];
   return {
     name,
     organisation: mapped.organisation,
@@ -327,6 +447,8 @@ export async function importStagedRow(
   let outcome: NonNullable<StagedRow["outcome"]>;
 
   if (staged.matchStatus === "new") {
+    const sourceUrl = firstValue(staged.rawValues.source_urls);
+    const importedStatus = staged.rawValues.status === "active" ? "active" : "needs_review";
     const [created] = await db
       .insert(services)
       .values({
@@ -338,9 +460,10 @@ export async function importStagedRow(
         email: staged.email,
         address: staged.address,
         catchment: staged.catchment,
-        status: "active",
+        status: importedStatus,
         sourceType: "excel_import",
-        sourceName: `Spreadsheet import: ${batch?.filename ?? "unknown file"}`,
+        sourceName: staged.rawValues.source_name || `Spreadsheet import: ${batch?.filename ?? "unknown file"}`,
+        sourceUrl,
       })
       .returning();
     await logServiceChange({
@@ -353,7 +476,8 @@ export async function importStagedRow(
       changedBy: importedBy,
       note: `Imported from spreadsheet (staging row ${staged.rowNumber}).`,
     });
-    const addedNeeds = await addMissingNeeds(created.id, staged.needs, importedBy, staged.rowNumber);
+    const addedNeeds = await addMissingNeeds(created.id, staged.needs, importedBy, staged.rowNumber, staged.rawValues);
+    await addMissingPrototypeFacts(created.id, staged.rawValues, importedBy, staged.rowNumber);
     outcome = { mode: "created", filled: FILLABLE.filter((f) => staged[f]), skipped: [], addedNeeds };
   } else {
     const serviceId = staged.matchedServiceId!;
@@ -393,7 +517,8 @@ export async function importStagedRow(
         });
       }
     }
-    const addedNeeds = await addMissingNeeds(serviceId, staged.needs, importedBy, staged.rowNumber);
+    const addedNeeds = await addMissingNeeds(serviceId, staged.needs, importedBy, staged.rowNumber, staged.rawValues);
+    await addMissingPrototypeFacts(serviceId, staged.rawValues, importedBy, staged.rowNumber);
     outcome = { mode: "merged", filled, skipped, addedNeeds };
   }
 
@@ -404,12 +529,69 @@ export async function importStagedRow(
   return outcome;
 }
 
+async function addMissingPrototypeFacts(
+  serviceId: string,
+  raw: Record<string, string>,
+  importedBy: string,
+  rowNumber: number,
+): Promise<void> {
+  const proposed = mapPrototypeFacts(raw);
+  if (proposed.length === 0) return;
+  const existing = await db
+    .select({ attrType: serviceAttributes.attrType, key: serviceAttributes.key })
+    .from(serviceAttributes)
+    .where(eq(serviceAttributes.serviceId, serviceId));
+  const knownKeys = new Set(existing.map((fact) => `${fact.attrType}:${fact.key}`));
+  const toAdd = proposed.filter((fact) => !knownKeys.has(`${fact.attrType}:${fact.key}`));
+  if (toAdd.length === 0) return;
+  const synthetic = raw.review_state === "synthetic_fixture";
+  const retrievedAt = raw.retrieved_at && Number.isFinite(Date.parse(raw.retrieved_at))
+    ? new Date(raw.retrieved_at)
+    : new Date();
+  const inserted = await db
+    .insert(serviceAttributes)
+    .values(
+      toAdd.map((fact) => ({
+        serviceId,
+        attrType: fact.attrType,
+        key: fact.key,
+        value: fact.value,
+        sourceType: "excel_import" as const,
+        sourceName: raw.source_name || "Spreadsheet import",
+        sourceUrl: firstValue(raw.source_urls),
+        retrievedAt,
+        expiresAt: fact.expiresAt,
+        verificationStatus:
+          fact.expiresAt && fact.expiresAt.getTime() <= Date.now()
+            ? "stale"
+            : synthetic
+              ? "verified_machine"
+              : "needs_provider_confirmation",
+        notes: `From spreadsheet import (staging row ${rowNumber}).`,
+      })),
+    )
+    .returning({ id: serviceAttributes.id, key: serviceAttributes.key, value: serviceAttributes.value });
+  for (const fact of inserted) {
+    await logServiceChange({
+      serviceId,
+      attributeId: fact.id,
+      entity: "attribute",
+      field: fact.key,
+      oldValue: null,
+      newValue: fact.value,
+      changedBy: importedBy,
+      note: `Structured fact added from spreadsheet import (staging row ${rowNumber}).`,
+    });
+  }
+}
+
 /** Add need facts not already recorded. Returns the tokens actually added. */
 async function addMissingNeeds(
   serviceId: string,
   needs: string[],
   importedBy: string,
   rowNumber: number,
+  raw?: Record<string, string>,
 ): Promise<string[]> {
   if (needs.length === 0) return [];
   const existing = await db
@@ -425,6 +607,7 @@ async function addMissingNeeds(
   const knownValues = new Set(existing.map((a) => a.value));
   const toAdd = needs.filter((n) => !knownValues.has(n));
   if (toAdd.length === 0) return [];
+  const synthetic = raw?.review_state === "synthetic_fixture";
   await db.insert(serviceAttributes).values(
     toAdd.map((need) => ({
       serviceId,
@@ -432,10 +615,11 @@ async function addMissingNeeds(
       key: "need",
       value: need,
       sourceType: "excel_import",
-      sourceName: "Spreadsheet import",
+      sourceName: raw?.source_name || "Spreadsheet import",
+      sourceUrl: firstValue(raw?.source_urls),
       retrievedAt: new Date(),
       // spreadsheet data is not verified — provider confirmation still applies
-      verificationStatus: "needs_provider_confirmation",
+      verificationStatus: synthetic ? "verified_machine" : "needs_provider_confirmation",
       notes: `From spreadsheet import (staging row ${rowNumber}).`,
     })),
   );

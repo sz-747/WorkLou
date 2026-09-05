@@ -14,6 +14,7 @@ import { cases, referralEvents, referrals, services } from "../../../db/schema";
 import {
   buildFollowUpDraftInput,
   draftFollowUpText,
+  fallbackFollowUpText,
   isValidOutcome,
   recordOutcome,
   recordProviderResponse,
@@ -52,11 +53,11 @@ export async function recordResponse(fd: FormData): Promise<void> {
   const referralId = String(fd.get("referralId"));
   const responseText = fdStr(fd, "responseText");
 
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/women/${caseId}?followUpError=${encodeURIComponent(msg)}`);
   if (!responseText) back("Write what the provider said before saving.");
 
-  const ok = await recordProviderResponse(referralId, responseText);
+  const ok = await recordProviderResponse(referralId, responseText!);
   if (!ok) back("Only open (sent/responded) referrals accept responses.");
   revalidatePath(`/women/${caseId}`);
 }
@@ -68,11 +69,11 @@ export async function recordOutcomeAction(fd: FormData): Promise<void> {
   const outcome = String(fd.get("outcome"));
   const outcomeNotes = fdStr(fd, "outcomeNotes");
 
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/women/${caseId}?followUpError=${encodeURIComponent(msg)}`);
   if (!isValidOutcome(outcome)) back("Choose a valid outcome.");
 
-  const ok = await recordOutcome(referralId, outcome, outcomeNotes);
+  const ok = await recordOutcome(referralId, outcome as Parameters<typeof recordOutcome>[1], outcomeNotes);
   if (!ok) back("Only open (sent/responded) referrals accept outcomes.");
   revalidatePath(`/women/${caseId}`);
 }
@@ -82,7 +83,7 @@ export async function draftFollowUp(fd: FormData): Promise<void> {
   const caseId = String(fd.get("caseId"));
   const referralId = String(fd.get("referralId"));
 
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/women/${caseId}?followUpError=${encodeURIComponent(msg)}`);
 
   const referral = await loadForDraft(referralId);
@@ -110,9 +111,8 @@ export async function draftFollowUp(fd: FormData): Promise<void> {
   let text: string;
   try {
     text = await draftFollowUpText(input);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Follow-up drafting failed.";
-    back(msg);
+  } catch {
+    text = fallbackFollowUpText(input);
   }
 
   await storeFollowUpDraft(referralId, text!);

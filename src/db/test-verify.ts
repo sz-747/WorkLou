@@ -5,7 +5,13 @@
  */
 import { eq, sql } from "drizzle-orm";
 import { db } from "./index";
-import { serviceAttributes, services, type CaseContext } from "./schema";
+import {
+  cases,
+  providerConfirmationEvents,
+  serviceAttributes,
+  services,
+  type CaseContext,
+} from "./schema";
 import { matchServices, type FactRow, type ServiceCandidate } from "../lib/matching";
 import { groupFacts, markFactStale, recordProviderConfirmation } from "../lib/verify";
 
@@ -29,9 +35,9 @@ const context: CaseContext = {
   catchment: null,
   children: { count: 2 },
   pets: { has_pet: true, details: "dog" },
-  income: { status: "low", source: null },
+  income: { status: "low" },
   visa: "student",
-  languages: ["english"],
+  languages: ["english", "arabic"],
   urgency: "high",
   safety_preferences: null,
   safe_contact_method: null,
@@ -55,7 +61,7 @@ const fixtureFacts: FactRow[] = [
   fact({ attrType: "need", key: "need", value: "housing_accommodation" }),
   fact({ attrType: "eligibility", key: "children", value: "welcome", sourceType: "provider_confirmed", sourceName: "Provider confirmation — Caseworker (phone)", verificationStatus: "provider_confirmed", confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(20) }),
   fact({ attrType: "eligibility", key: "pets", value: "unknown", verificationStatus: "needs_provider_confirmation" }),
-  fact({ attrType: "wait_time", key: "wait_time", value: "2-4 weeks", retrievedAt: daysAgo(120), verificationStatus: "stale", sourceType: "provider_confirmed", sourceName: "Provider confirmation — Caseworker (phone)", confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(120) }),
+  fact({ attrType: "wait_time", key: "wait_time", value: "2-3 weeks", retrievedAt: daysAgo(120), verificationStatus: "stale", sourceType: "provider_confirmed", sourceName: "Provider confirmation — Caseworker (phone)", confirmedBy: "Caseworker (phone)", confirmedAt: daysAgo(120) }),
 ];
 
 async function main() {
@@ -75,16 +81,22 @@ async function main() {
     "unknown value is NEVER claimed known (pets excluded from known)",
     !group.known.some((f) => f.key === "pets"),
   );
-  const pets = group.needsConfirmation.find((i) => i.key === "pets");
-  assert("pets listed as needing provider confirmation", pets?.fact?.verificationStatus === "needs_provider_confirmation");
+  assert(
+    "durable profile gaps are left for online refresh, not added to the provider call",
+    !group.needsConfirmation.some((item) => ["need", "children", "pets", "visa", "languages", "income"].includes(item.key)),
+  );
+  assert(
+    "multiple requested languages never create duplicate provider questions",
+    group.needsConfirmation.filter((item) => item.key === "languages").length === 0,
+  );
   const wait = group.needsConfirmation.find((i) => i.key === "wait_time");
   assert(
     "stale fact moved to needs-confirmation with history kept visible",
-    wait?.fact?.verificationStatus === "stale" && wait.history?.includes("confirmed by Caseworker (phone)"),
+    wait?.fact?.verificationStatus === "stale" && wait.history?.includes("confirmed by Caseworker (phone)") === true,
   );
   assert(
-    "missing criteria shown as explicit unknowns: visa + languages + income (no stored fact at all)",
-    group.needsConfirmation.filter((i) => i.fact === null).map((i) => i.key).join(",") === "visa,languages,income",
+    "provider call is limited to reusable current wait time and capacity questions",
+    group.needsConfirmation.map((i) => i.key).join(",") === "wait_time,capacity",
   );
   assert(
     "known facts are not duplicated in the needs-confirmation list",
@@ -95,9 +107,31 @@ async function main() {
   const noKidsCtx: CaseContext = { ...context, children: null, pets: null, visa: null, languages: [], income: null, urgency: "low" };
   const group2 = groupFacts(noKidsCtx, fixtureFacts);
   assert(
-    "criteria the case does not care about are not listed as unknowns",
-    group2.needsConfirmation.filter((i) => i.fact === null).length === 0 &&
-      group2.needsConfirmation.length === 2, // pets + wait time still stored unknowns/stale
+    "wait time remains useful regardless of case urgency; housing still asks capacity",
+    group2.needsConfirmation.map((item) => item.key).join(",") === "wait_time,capacity",
+  );
+  const duplicateWait = fact({
+    attrType: "wait_time",
+    key: "wait_time",
+    value: "unknown",
+    retrievedAt: daysAgo(10),
+    verificationStatus: "needs_provider_confirmation",
+  });
+  const deduplicated = groupFacts(context, [...fixtureFacts, duplicateWait]);
+  assert(
+    "duplicate stored wait rows still produce one provider question",
+    deduplicated.needsConfirmation.filter((item) => item.key === "wait_time").length === 1,
+  );
+  const currentWait = fact({
+    attrType: "wait_time",
+    key: "wait_time",
+    value: "today",
+    retrievedAt: daysAgo(0),
+  });
+  const currentWins = groupFacts(context, [...fixtureFacts, currentWait]);
+  assert(
+    "one current wait-time answer suppresses older duplicate history",
+    !currentWins.needsConfirmation.some((item) => item.key === "wait_time"),
   );
 
   // ---------- DB FLOW: record confirmation → shared knowledge → reuse ----------
@@ -115,6 +149,11 @@ async function main() {
     })
     .returning();
 
+  const [testCase] = await db
+    .insert(cases)
+    .values({ clientRef: "TEST-VERIFY-001", originalNotes: "test notes" })
+    .returning();
+
   const [petsFact] = await db
     .insert(serviceAttributes)
     .values({
@@ -130,6 +169,7 @@ async function main() {
     .returning();
 
   await recordProviderConfirmation({
+    caseId: testCase.id,
     attrId: petsFact.id,
     serviceId: testService.id,
     attrType: "eligibility",
@@ -196,6 +236,7 @@ async function main() {
 
   // insert a MISSING fact via confirmation (no attrId)
   const insertedId = await recordProviderConfirmation({
+    caseId: testCase.id,
     attrId: null,
     serviceId: testService.id,
     attrType: "eligibility",
@@ -209,6 +250,33 @@ async function main() {
   assert(
     "missing fact inserted as provider-confirmed (not guessed) with source + timestamp",
     inserted.verificationStatus === "provider_confirmed" && inserted.confirmedBy === "Caseworker — email" && !!inserted.confirmedAt,
+  );
+  const expiredCapacity = fact({
+    attrType: "delivery",
+    key: "capacity",
+    value: "reported_available",
+    sourceType: "provider_confirmed",
+    verificationStatus: "provider_confirmed",
+    expiresAt: "2026-09-05T03:00:00Z",
+  });
+  const expiryGroup = groupFacts(
+    context,
+    [...fixtureFacts, expiredCapacity],
+    new Date("2026-09-05T04:00:00Z"),
+  );
+  assert(
+    "expired provider-confirmed capacity is never shown or drafted as known",
+    !expiryGroup.known.includes(expiredCapacity) &&
+      expiryGroup.needsConfirmation.some((item) => item.fact === expiredCapacity),
+  );
+  const confirmationHistory = await db
+    .select()
+    .from(providerConfirmationEvents)
+    .where(eq(providerConfirmationEvents.caseId, testCase.id));
+  assert(
+    "provider confirmation history is append-only and case-specific",
+    confirmationHistory.length === 2 &&
+      confirmationHistory.every((event) => event.caseId === testCase.id),
   );
 
   // ---------- DB FLOW: expiry without deleting history ----------
@@ -228,14 +296,14 @@ async function main() {
   const staledGroup = groupFacts(context, [
     ...(await db.select().from(serviceAttributes).where(eq(serviceAttributes.serviceId, testService.id))),
   ] as FactRow[]);
-  const staledItem = staledGroup.needsConfirmation.find((i) => i.key === "visa");
   assert(
-    "expired fact returns to the needs-confirmation list with its history visible",
-    staledItem?.fact?.verificationStatus === "stale" && staledItem?.history?.includes("Caseworker — email"),
+    "a stale durable profile fact stays out of the provider availability call",
+    !staledGroup.needsConfirmation.some((item) => item.key === "visa"),
   );
 
   // ---------- CLEANUP ----------
   console.log("[CLEANUP] removing test rows");
+  await db.delete(cases).where(eq(cases.id, testCase.id));
   await db.delete(services).where(eq(services.id, testService.id));
   const leftover = await db
     .select({ count: sql<number>`count(*)::int` })

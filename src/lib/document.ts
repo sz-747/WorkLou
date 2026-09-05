@@ -7,13 +7,19 @@
  * The LLM only arranges stored data into sections; the worker reviews,
  * edits, and approves. The original notes are never modified.
  */
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db";
-import { caseDocuments, referrals, serviceAttributes, services, type CaseContext } from "../db/schema";
-import { chatCompletionsUrl } from "./extraction";
+import {
+  caseDocuments,
+  providerConfirmationEvents,
+  services,
+  type CaseContext,
+} from "../db/schema";
+import { chatCompletionsUrl, fetchLlm } from "./extraction";
 import { CONTEXT_FIELDS, fieldSourceOf, fieldValuePreview } from "./context-fields";
 import { factLabel } from "./verify";
 import { outcomeLabel } from "./followup";
+import { sydneyDate } from "./dates";
 
 export type CaseDocumentRow = {
   id: string;
@@ -44,33 +50,21 @@ export async function getCaseDocuments(caseId: string): Promise<CaseDocumentRow[
 export async function getProviderConfirmationsForCase(
   caseId: string,
 ): Promise<
-  { serviceName: string; fact: string; confirmedBy: string | null; confirmedAt: Date | null }[]
+  { serviceName: string; fact: string; confirmedBy: string; confirmedAt: Date }[]
 > {
-  const referred = await db
-    .selectDistinct({ serviceId: referrals.serviceId })
-    .from(referrals)
-    .where(eq(referrals.caseId, caseId));
-  if (referred.length === 0) return [];
   const rows = await db
     .select({
       serviceName: services.name,
-      key: serviceAttributes.key,
-      value: serviceAttributes.value,
-      confirmedBy: serviceAttributes.confirmedBy,
-      confirmedAt: serviceAttributes.confirmedAt,
+      key: providerConfirmationEvents.key,
+      value: providerConfirmationEvents.value,
+      confirmedBy: providerConfirmationEvents.confirmedBy,
+      confirmedAt: providerConfirmationEvents.confirmedAt,
     })
-    .from(serviceAttributes)
-    .innerJoin(services, eq(serviceAttributes.serviceId, services.id))
-    .where(
-      inArray(
-        serviceAttributes.serviceId,
-        referred.map((r) => r.serviceId),
-      ),
-    )
-    .orderBy(desc(serviceAttributes.confirmedAt));
-  return rows
-    .filter((r) => r.confirmedBy && r.confirmedAt)
-    .map((r) => ({
+    .from(providerConfirmationEvents)
+    .innerJoin(services, eq(providerConfirmationEvents.serviceId, services.id))
+    .where(eq(providerConfirmationEvents.caseId, caseId))
+    .orderBy(desc(providerConfirmationEvents.confirmedAt));
+  return rows.map((r) => ({
       serviceName: r.serviceName,
       fact: `${factLabel(r.key)}: ${r.value}`,
       confirmedBy: r.confirmedBy,
@@ -98,8 +92,7 @@ export type CaseNoteInput = {
   followUpActivity: { date: string; kind: string; note: string }[];
 };
 
-const isoDate = (d: Date | string | null) =>
-  d ? new Date(d).toISOString().slice(0, 10) : null;
+const isoDate = (d: Date | string | null) => (d ? sydneyDate(d) : null);
 
 /**
  * Pure: build the case-note input from stored data. Woman-stated and
@@ -109,7 +102,7 @@ const isoDate = (d: Date | string | null) =>
  */
 export function buildCaseNoteInput(stored: {
   clientRef: string;
-  createdAt: Date | string;
+  appointmentAt: Date | string;
   originalNotes: string;
   context: CaseContext | null;
   referrals: {
@@ -136,7 +129,7 @@ export function buildCaseNoteInput(stored: {
   }
   return {
     clientRef: stored.clientRef,
-    appointmentDate: isoDate(stored.createdAt)!,
+    appointmentDate: isoDate(stored.appointmentAt)!,
     originalNotes: stored.originalNotes,
     womanStated,
     workerObservations,
@@ -192,7 +185,7 @@ export async function draftCaseNoteText(input: CaseNoteInput): Promise<string> {
     throw new Error("LLM not configured (LLM_BASE_URL / LLM_API_KEY / LLM_MODEL missing)");
   }
 
-  const res = await fetch(chatCompletionsUrl(base), {
+  const res = await fetchLlm(chatCompletionsUrl(base), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -219,6 +212,20 @@ export async function draftCaseNoteText(input: CaseNoteInput): Promise<string> {
   return content.trim();
 }
 
+/** Deterministic six-section draft used when the LLM is unavailable. */
+export function fallbackCaseNoteText(input: CaseNoteInput): string {
+  const section = (title: string, items: string[]) =>
+    [title, ...(items.length > 0 ? items : ["None recorded"])].join("\n");
+  return [
+    section("Woman said", [input.originalNotes, ...input.womanStated.map((item) => `${item.field}: ${item.value}`)].filter(Boolean)),
+    section("Current concerns", []),
+    section("Actions taken", input.providerConfirmations.map((item) => `${item.serviceName}: ${item.fact}`)),
+    section("Referrals", input.referrals.map((item) => `${item.serviceName}: ${item.status}${item.outcome ? `, ${item.outcome}` : ""}`)),
+    section("Worker observations", input.workerObservations.map((item) => `${item.field}: ${item.value}`)),
+    section("Next steps", input.referrals.filter((item) => item.status !== "closed" && item.followUpDue).map((item) => `Follow up ${item.serviceName} by ${item.followUpDue}`)),
+  ].join("\n\n");
+}
+
 /** Store a new case-note draft. Nothing is ever transmitted or final here. */
 export async function insertDocumentDraft(caseId: string, draftText: string) {
   const [row] = await db
@@ -235,9 +242,9 @@ export async function saveDocumentDraftText(documentId: string, draftText: strin
   const updated = await db
     .update(caseDocuments)
     .set({ draftText: trimmed })
-    .where(eq(caseDocuments.id, documentId))
-    .returning({ id: caseDocuments.id, status: caseDocuments.status });
-  return updated.length > 0 && updated[0].status === "draft";
+    .where(and(eq(caseDocuments.id, documentId), eq(caseDocuments.status, "draft")))
+    .returning({ id: caseDocuments.id });
+  return updated.length > 0;
 }
 
 /** Worker approves a draft — it becomes the final case note. Drafts only. */

@@ -74,10 +74,11 @@ async function main() {
   const results: SerpResult[] = await serpSearch("women's housing Sydney", {
     fetchImpl: captureFetch(organic),
   });
-  const serpBody = JSON.parse(String(captured?.init.body));
+  const capturedRequest = captured as Captured | null;
+  const serpBody = JSON.parse(String(capturedRequest?.init.body));
   assert(
     "google search URL built from the query with au/en, SERP zone, parsed_light format",
-    captured?.url === "https://api.brightdata.com/request" &&
+    capturedRequest?.url === "https://api.brightdata.com/request" &&
       serpBody.zone === "test_serp_zone" &&
       serpBody.format === "raw" &&
       serpBody.data_format === "parsed_light" &&

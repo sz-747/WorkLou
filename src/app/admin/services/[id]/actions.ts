@@ -21,7 +21,7 @@ function fdStr(fd: FormData, key: string): string | null {
 export async function saveService(fd: FormData): Promise<void> {
   const serviceId = String(fd.get("serviceId"));
   const changedBy = fdStr(fd, "changedBy");
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/admin/services/${serviceId}?adminError=${encodeURIComponent(msg)}`);
   if (!changedBy) back("Your name/initials are required (who made the correction).");
 
@@ -44,7 +44,7 @@ export async function saveService(fd: FormData): Promise<void> {
   }
   if (!patch.name) back("Service name is required.");
 
-  const changed = await updateServiceAdmin({ serviceId, patch, changedBy });
+  const changed = await updateServiceAdmin({ serviceId, patch, changedBy: changedBy! });
   if (changed === 0) back("Nothing changed — the values submitted match the stored ones.");
   revalidatePath(`/admin/services/${serviceId}`);
   revalidatePath("/admin");
@@ -57,12 +57,12 @@ export async function correctFact(fd: FormData): Promise<void> {
   const value = fdStr(fd, "value");
   const changedBy = fdStr(fd, "changedBy");
   const notes = fdStr(fd, "notes");
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/admin/services/${serviceId}?adminError=${encodeURIComponent(msg)}`);
   if (!value) back("A corrected value is required.");
   if (!changedBy) back("Your name/initials are required (who made the correction).");
 
-  const updated = await correctServiceAttribute({ attrId, value, notes, changedBy });
+  const updated = await correctServiceAttribute({ attrId, value: value!, notes, changedBy: changedBy! });
   if (!updated) back("That fact no longer exists.");
   revalidatePath(`/admin/services/${serviceId}`);
   revalidatePath("/admin");

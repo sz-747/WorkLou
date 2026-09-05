@@ -185,7 +185,9 @@ async function main() {
   const [costAfter1] = factsAfter1.filter((f) => f.id === costFact.id);
   assert(
     "unchanged stale fact refreshed in place (stale → verified_machine, fresh retrieval)",
-    costAfter1.verificationStatus === "verified_machine" && costAfter1.retrievedAt > daysAgo(1),
+    costAfter1.verificationStatus === "verified_machine" &&
+      costAfter1.retrievedAt !== null &&
+      costAfter1.retrievedAt > daysAgo(1),
   );
   const [petsAfter1] = factsAfter1.filter((f) => f.id === petsFact.id);
   assert(
@@ -268,6 +270,7 @@ async function main() {
       waitFactApplied.value === "3-5 weeks" &&
       waitFactApplied.sourceType === "machine" &&
       waitFactApplied.verificationStatus === "verified_machine" &&
+      waitFactApplied.retrievedAt !== null &&
       waitFactApplied.retrievedAt > daysAgo(1) &&
       waitLog.length === 1 &&
       waitLog[0].oldValue === "2-4 weeks" &&

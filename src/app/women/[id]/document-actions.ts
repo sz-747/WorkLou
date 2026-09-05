@@ -19,10 +19,12 @@ import {
   approveDocument,
   buildCaseNoteInput,
   draftCaseNoteText,
+  fallbackCaseNoteText,
   getProviderConfirmationsForCase,
   insertDocumentDraft,
   saveDocumentDraftText,
 } from "../../../lib/document";
+import { getNotesForContext } from "../../../lib/case-notes";
 
 function fdStr(fd: FormData, key: string): string | null {
   const v = fd.get(key);
@@ -33,13 +35,14 @@ function fdStr(fd: FormData, key: string): string | null {
 export async function draftDocument(fd: FormData): Promise<void> {
   const caseId = String(fd.get("caseId"));
 
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/women/${caseId}?documentError=${encodeURIComponent(msg)}`);
 
   const [caseRow] = await db.select().from(cases).where(eq(cases.id, caseId));
   if (!caseRow) back("Case not found.");
 
   const approvedContext = await getLatestApprovedContext(caseId);
+  const approvedNotes = await getNotesForContext(caseId, approvedContext?.noteRevisionId ?? null);
   const referrals = await getReferralsForCase(caseId);
   const confirmations = await getProviderConfirmationsForCase(caseId);
   const events = await getReferralEventsForCase(caseId);
@@ -47,8 +50,8 @@ export async function draftDocument(fd: FormData): Promise<void> {
   const input = buildCaseNoteInput(
     {
       clientRef: caseRow.clientRef,
-      createdAt: caseRow.createdAt,
-      originalNotes: caseRow.originalNotes,
+      appointmentAt: caseRow.appointmentAt,
+      originalNotes: approvedNotes,
       context: approvedContext?.context ?? null,
       referrals,
       confirmations,
@@ -59,9 +62,8 @@ export async function draftDocument(fd: FormData): Promise<void> {
   let text: string;
   try {
     text = await draftCaseNoteText(input);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Case-note drafting failed.";
-    back(msg);
+  } catch {
+    text = fallbackCaseNoteText(input);
   }
 
   await insertDocumentDraft(caseId, text!);
@@ -74,11 +76,11 @@ export async function saveDocumentDraft(fd: FormData): Promise<void> {
   const documentId = String(fd.get("documentId"));
   const draftText = fdStr(fd, "draftText");
 
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/women/${caseId}?documentError=${encodeURIComponent(msg)}`);
   if (!draftText) back("The case note cannot be empty.");
 
-  const ok = await saveDocumentDraftText(documentId, draftText);
+  const ok = await saveDocumentDraftText(documentId, draftText!);
   if (!ok) back("Only draft case notes can be edited.");
   revalidatePath(`/women/${caseId}`);
 }
@@ -88,7 +90,7 @@ export async function approveDocumentAction(fd: FormData): Promise<void> {
   const caseId = String(fd.get("caseId"));
   const documentId = String(fd.get("documentId"));
 
-  const back = (msg: string) =>
+  const back = (msg: string): never =>
     redirect(`/women/${caseId}?documentError=${encodeURIComponent(msg)}`);
 
   const ok = await approveDocument(documentId);

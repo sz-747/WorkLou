@@ -26,6 +26,8 @@ function fdList(fd: FormData, key: string): string[] {
 export function contextFromFormData(fd: FormData): CaseContext {
   const childrenCount = Number(fdStr(fd, "childrenCount"));
   const petHas = fdStr(fd, "petHas"); // "" | "yes" | "no"
+  const incomeStatus = fdStr(fd, "incomeStatus");
+  const incomeSource = fdStr(fd, "incomeSource");
   const base: CaseContext = {
     needs: fdList(fd, "needs"),
     suburb: fdStr(fd, "suburb"),
@@ -40,10 +42,9 @@ export function contextFromFormData(fd: FormData): CaseContext {
         : petHas === "no"
           ? { has_pet: false }
           : null,
-    income: {
-      status: fdStr(fd, "incomeStatus"),
-      source: fdStr(fd, "incomeSource"),
-    },
+    income: incomeStatus || incomeSource
+      ? { status: incomeStatus ?? undefined, source: incomeSource ?? undefined }
+      : null,
     visa: fdStr(fd, "visa"),
     languages: fdList(fd, "languages"),
     urgency: fdStr(fd, "urgency"),

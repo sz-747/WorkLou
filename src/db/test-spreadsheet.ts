@@ -15,6 +15,7 @@ import {
   importSpreadsheetText,
   importStagedRow,
   mapSpreadsheetRow,
+  mapPrototypeFacts,
   normaliseNeedToken,
   parseCsv,
 } from "../lib/spreadsheet";
@@ -59,6 +60,67 @@ async function main() {
   );
   assert("unmapped headers preserved verbatim in raw", mapped?.raw["Notes"] === "note");
   assert("row without a service name is skipped", mapSpreadsheetRow(["Phone"], ["02 0000 0000"]) === null);
+
+  const prototypeMapped = mapSpreadsheetRow(
+    [
+      "service_id",
+      "name",
+      "provider",
+      "service_type",
+      "regions",
+      "catchment_lgas",
+      "location_area",
+      "accommodation_delivery",
+    ],
+    [
+      "demo-01",
+      "DEMO Harbour House",
+      "Synthetic demo provider",
+      "crisis_accommodation",
+      "Sydney",
+      "Sydney",
+      "Sydney",
+      "crisis_accommodation",
+    ],
+  );
+  assert(
+    "prototype name remains the program and provider maps to organisation",
+    prototypeMapped?.name === "DEMO Harbour House" &&
+      prototypeMapped.organisation === "Synthetic demo provider",
+  );
+  assert(
+    "prototype geography maps without replacing program identity",
+    prototypeMapped?.address === "Sydney" && prototypeMapped.catchment === "Sydney",
+  );
+  assert(
+    "explicit prototype accommodation capability maps to the canonical need",
+    JSON.stringify(prototypeMapped?.needs) === '["housing_accommodation"]',
+  );
+  const prototypeFacts = mapPrototypeFacts({
+    women_with_children: "accepted",
+    pets_on_site: "not_allowed",
+    visa_policy: "temporary_visa_considered",
+    nil_income_policy: "nil_income_considered",
+    accommodation_delivery: "crisis_accommodation",
+    wheelchair_access: "accessible",
+    capacity_status: "reported_available",
+    capacity_expires_at: "2026-09-05T13:00:00+10:00",
+  });
+  assert(
+    "prototype eligibility columns become typed facts without prose inference",
+    prototypeFacts.some((f) => f.key === "children" && f.value === "allowed") &&
+      prototypeFacts.some((f) => f.key === "pets" && f.value === "not_allowed") &&
+      prototypeFacts.some((f) => f.key === "visa" && f.value === "temporary_visa_considered") &&
+      prototypeFacts.some((f) => f.key === "income" && f.value === "nil_income_considered") &&
+      prototypeFacts.some((f) => f.key === "wheelchair" && f.value === "allowed") &&
+      prototypeFacts.some(
+        (f) => f.key === "capacity" && f.value === "reported_available" && !!f.expiresAt,
+      ),
+  );
+  assert(
+    "vague prototype policy prose remains unknown",
+    mapPrototypeFacts({ pets_on_site: "pet accommodation may be discussed" })[0]?.value === "unknown",
+  );
 
   assert("needs aliases normalise", normaliseNeedToken("Crisis accommodation") === "housing_accommodation");
   assert("unknown need label becomes a normalised token", normaliseNeedToken("Dog Support Groups") === "dog_support_groups");

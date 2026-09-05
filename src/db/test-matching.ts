@@ -55,9 +55,9 @@ const watershed: ServiceCandidate = {
     fact({ key: "need", value: "housing_accommodation" }),
     fact({ key: "need", value: "dfv_safety" }),
     fact({ attrType: "eligibility", key: "children", value: "welcome" }),
-    fact({ attrType: "eligibility", key: "pets", value: "unknown", verificationStatus: "needs_provider_confirmation", notes: "Pet policy genuinely requires direct provider confirmation." }),
+    fact({ attrType: "eligibility", key: "pets", value: "negotiable", notes: "Synthetic spreadsheet states pets are considered case-by-case." }),
     fact({ attrType: "cost", key: "cost", value: "free", retrievedAt: daysAgo(120), verificationStatus: "stale" }),
-    fact({ attrType: "wait_time", key: "wait_time", value: "2-4 weeks", retrievedAt: daysAgo(120), verificationStatus: "stale" }),
+    fact({ attrType: "wait_time", key: "wait_time", value: "2-3 weeks", retrievedAt: daysAgo(120), verificationStatus: "stale" }),
   ],
 };
 
@@ -124,8 +124,8 @@ async function main() {
   assert("Watershed suitable with 2 matched needs", ws.suitable && ws.matchedNeeds.join(",") === "housing_accommodation,dfv_safety");
   const wsPets = ws.criteria.find((c) => c.criterion === "pets");
   assert(
-    "pets shown as unknown — needs provider confirmation (never guessed)",
-    wsPets?.status === "needs_provider_confirmation" && wsPets?.detail.includes("pet policy unknown"),
+    "Watershed synthetic pet policy is matched as case-by-case",
+    wsPets?.status === "matched" && wsPets?.value === "negotiable",
   );
   const wsWait = ws.criteria.find((c) => c.criterion === "wait time");
   assert("stale wait time flagged as stale, not current", wsWait?.status === "stale" && wsWait?.fact?.retrievedAt !== null);
@@ -150,7 +150,7 @@ async function main() {
   const nd = evaluateService(seededContext, newDawn);
   assert(
     "New Dawn excluded with deterministic reason naming the needs",
-    !nd.suitable && nd.reason?.includes("does not provide the client's needs") && nd.reason.includes("employment"),
+    !nd.suitable && nd.reason?.includes("does not provide the client's needs") === true && nd.reason.includes("employment"),
   );
 
   // ranking: most matched needs first; ties by freshness then name (Bright Path before Southside)
@@ -186,6 +186,68 @@ async function main() {
   assert(
     "children restriction excludes the service with reason from stored value",
     !nk.suitable && nk.reason === "children not accepted (children: not_accepted)",
+  );
+
+  const prototypeNoKids = evaluateService(seededContext, {
+    ...noKids,
+    id: "fixture-prototype-nokids",
+    attributes: noKids.attributes.map((item) =>
+      item.key === "children" ? { ...item, value: "not_allowed" } : item,
+    ),
+  });
+  assert(
+    "prototype children value not_allowed is also a hard exclusion",
+    !prototypeNoKids.suitable && prototypeNoKids.reason?.includes("children not accepted") === true,
+  );
+
+  const conditionalVisa = evaluateService(seededContext, {
+    ...watershed,
+    id: "fixture-conditional-visa",
+    attributes: [
+      ...watershed.attributes.filter((item) => item.key !== "visa"),
+      fact({ attrType: "eligibility", key: "visa", value: "temporary_visa_considered" }),
+    ],
+  });
+  assert(
+    "conditional visa policy stays suitable but requires provider confirmation",
+    conditionalVisa.suitable &&
+      conditionalVisa.criteria.find((criterion) => criterion.criterion === "visa")?.status ===
+        "needs_provider_confirmation",
+  );
+
+  const localFirst = matchServices(
+    { ...seededContext, suburb: "Liverpool", catchment: null, needs: ["housing_accommodation"] },
+    [
+      { ...watershed, id: "far", name: "A Far", catchment: "Sydney" },
+      { ...watershed, id: "local", name: "Z Local", catchment: "Liverpool" },
+    ],
+  );
+  assert(
+    "exact recorded geography wins a need/freshness tie without excluding the remote option",
+    localFirst[0].service.id === "local" && localFirst.every((result) => result.suitable),
+  );
+
+  const capacityFixture: ServiceCandidate = {
+    ...watershed,
+    id: "fixture-capacity",
+    attributes: [
+      ...watershed.attributes,
+      fact({
+        attrType: "delivery",
+        key: "capacity",
+        value: "full",
+        expiresAt: "2026-09-05T03:00:00Z",
+      }),
+    ],
+  };
+  const currentFull = evaluateService(seededContext, capacityFixture, new Date("2026-09-05T02:00:00Z"));
+  const expiredFull = evaluateService(seededContext, capacityFixture, new Date("2026-09-05T04:00:00Z"));
+  assert(
+    "current full capacity excludes, but the same report becomes non-excluding once expired",
+    !currentFull.suitable &&
+      currentFull.reason === "currently reported full" &&
+      expiredFull.suitable &&
+      expiredFull.criteria.find((criterion) => criterion.criterion === "capacity")?.status === "stale",
   );
 
   // language mismatch is flagged but not excluded
@@ -251,7 +313,7 @@ async function main() {
   );
   assert(
     "seeded data: New Dawn and Harbour excluded with reasons",
-    dbResults.find((r) => r.service.name.includes("New Dawn"))?.reason?.includes("employment") &&
+    dbResults.find((r) => r.service.name.includes("New Dawn"))?.reason?.includes("employment") === true &&
       !dbResults.find((r) => r.service.name.includes("New Dawn"))?.suitable &&
       !dbResults.find((r) => r.service.name.includes("Harbour"))?.suitable,
   );

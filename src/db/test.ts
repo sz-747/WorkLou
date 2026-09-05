@@ -69,11 +69,20 @@ async function main() {
     .limit(1);
   assert("seeded case exists", !!seededCase);
 
+  const [testCase] = await db
+    .insert(cases)
+    .values({
+      clientRef: `TEST-DB-${Date.now()}`,
+      originalNotes: "Temporary case created by db:test",
+      status: "open",
+    })
+    .returning();
+
   const [approvedContext] = await db
     .insert(caseContexts)
     .values({
-      caseId: seededCase.id,
-      version: 2,
+      caseId: testCase.id,
+      version: 1,
       context: {
         needs: ["food_basic_needs"],
         suburb: "Waterloo",
@@ -97,7 +106,7 @@ async function main() {
   const [testReferral] = await db
     .insert(referrals)
     .values({
-      caseId: seededCase.id,
+      caseId: testCase.id,
       contextId: approvedContext.id,
       serviceId: testService.id,
       draftText: "TEST referral draft — factual content only from stored context.",
@@ -278,12 +287,12 @@ async function main() {
   const [testDoc] = await db
     .insert(caseDocuments)
     .values({
-      caseId: seededCase.id,
+      caseId: testCase.id,
       draftText: "TEST case note draft.",
       status: "draft",
     })
     .returning();
-  assert("case document created and linked to case", testDoc.caseId === seededCase.id);
+  assert("case document created and linked to the test case", testDoc.caseId === testCase.id);
 
   const [testCandidate] = await db
     .insert(discoveryCandidates)
@@ -312,6 +321,7 @@ async function main() {
   await db.delete(discoveryCandidates).where(eq(discoveryCandidates.id, testCandidate.id));
   await db.delete(serviceAttributes).where(eq(serviceAttributes.id, testAttr.id));
   await db.delete(services).where(eq(services.id, testService.id));
+  await db.delete(cases).where(eq(cases.id, testCase.id));
 
   const leftoverTest = await db
     .select({ count: sql<number>`count(*)::int` })
