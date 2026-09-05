@@ -4,6 +4,23 @@
 
 Run the existing WorkLou updater and discovery processes from Base44's native automation system. Postgres remains the canonical database. The Base44 functions are intentionally thin wrappers around the existing protected HTTP routes.
 
+## Demo decision: scheduler activation is not a UI blocker
+
+For the hackathon demo, the judges need to understand that service information can be maintained in the background. We do not need to prove a long-running production schedule before starting the Figma UI integration.
+
+The caseworker-facing demo may show a small **Service data upkeep** panel using stored demo-run data, with optional manual buttons:
+
+- Existing services checked
+- Service facts refreshed
+- Updates awaiting review
+- New-service scan status
+- Last demo run time
+- `Run service check` and `Run discovery` actions
+
+Use labels such as **Demo activity** or **Last demo run** while the native schedules remain inactive. Do not claim that a daily schedule is live unless Base44 has actually activated it and produced an execution log.
+
+The supplied Base44 scheduler wrappers remain available for later activation, but their deployment is not required before merging the backend into `main` and beginning the Figma UI work.
+
 ## Branch content to inspect
 
 - `base44/functions/run-worklou-updater/`
