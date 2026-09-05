@@ -154,60 +154,50 @@ async function main() {
   assert("referral status progressed draft -> approved -> sent", sentReferral.status === "sent");
   assert("sent_at recorded when worker marks sent", !!sentReferral.sentAt);
 
-  // provider confirmation on a needs-provider-confirmation fact (seeded Watershed pets)
+  // provider confirmation on a needs-provider-confirmation fact.
+  // Self-contained: the test creates its own pets fact on the test service, so
+  // the seeded Watershed pets fact (possibly already provider-confirmed by the
+  // demo run) is neither relied on nor modified. The fact is removed with the
+  // test service at cleanup (cascade).
   const [petsFact] = await db
+    .insert(serviceAttributes)
+    .values({
+      serviceId: testService.id,
+      attrType: "access",
+      key: "pets",
+      value: "unknown",
+      sourceType: "excel_import",
+      sourceName: "Test fixture",
+      verificationStatus: "needs_provider_confirmation",
+      notes: "Pet policy genuinely requires direct provider confirmation.",
+    })
+    .returning();
+  assert("seeded needs-provider-confirmation fact exists", !!petsFact?.id);
+
+  await db
+    .update(serviceAttributes)
+    .set({
+      value: "small_pets_ok",
+      sourceType: "provider_confirmed",
+      sourceName: "Phone confirmation by caseworker",
+      confirmedBy: "Test Worker (phone)",
+      confirmedAt: new Date(),
+      verificationStatus: "provider_confirmed",
+      notes: "Confirmed directly with provider in db:test.",
+    })
+    .where(eq(serviceAttributes.id, petsFact.id));
+
+  const [confirmed] = await db
     .select()
     .from(serviceAttributes)
-    .where(
-      and(
-        eq(serviceAttributes.key, "pets"),
-        eq(serviceAttributes.verificationStatus, "needs_provider_confirmation"),
-      ),
-    )
-    .limit(1);
-
-  if (petsFact) {
-    await db
-      .update(serviceAttributes)
-      .set({
-        value: "small_pets_ok",
-        sourceType: "provider_confirmed",
-        sourceName: "Phone confirmation by caseworker",
-        confirmedBy: "Test Worker (phone)",
-        confirmedAt: new Date(),
-        verificationStatus: "provider_confirmed",
-        notes: "Confirmed directly with provider in db:test.",
-      })
-      .where(eq(serviceAttributes.id, petsFact.id));
-
-    const [confirmed] = await db
-      .select()
-      .from(serviceAttributes)
-      .where(eq(serviceAttributes.id, petsFact.id));
-    assert(
-      "provider confirmation recorded (by + at + source + distinct status)",
-      !!confirmed?.confirmedAt &&
-        confirmed?.sourceType === "provider_confirmed" &&
-        confirmed?.verificationStatus === "provider_confirmed",
-    );
-    assert("confirmed fact value updated", confirmed?.value === "small_pets_ok");
-
-    // restore seeded fact state
-    await db
-      .update(serviceAttributes)
-      .set({
-        value: "unknown",
-        sourceType: "excel_import",
-        sourceName: "Lous Place Service List (Excel) v3",
-        confirmedBy: null,
-        confirmedAt: null,
-        verificationStatus: "needs_provider_confirmation",
-        notes: "Pet policy genuinely requires direct provider confirmation.",
-      })
-      .where(eq(serviceAttributes.id, petsFact.id));
-  } else {
-    assert("seeded needs-provider-confirmation fact exists", false);
-  }
+    .where(eq(serviceAttributes.id, petsFact.id));
+  assert(
+    "provider confirmation recorded (by + at + source + distinct status)",
+    !!confirmed?.confirmedAt &&
+      confirmed?.sourceType === "provider_confirmed" &&
+      confirmed?.verificationStatus === "provider_confirmed",
+  );
+  assert("confirmed fact value updated", confirmed?.value === "small_pets_ok");
 
   // outcome update
   await db
