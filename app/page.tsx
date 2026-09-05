@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Criteria, MatchResult, SERVICE_TYPES, SUBURBS } from '@/lib/types';
 
 const EXAMPLES = [
@@ -39,6 +39,7 @@ function TriSelect({ label, value, onChange }: { label: string; value: Tri; onCh
 }
 
 export default function SearchPage() {
+  const [notes, setNotes] = useState('');
   const [query, setQuery] = useState('');
   const [criteria, setCriteria] = useState<Criteria | null>(null);
   const [parserSource, setParserSource] = useState<string | null>(null);
@@ -56,7 +57,7 @@ export default function SearchPage() {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, criteria: c ?? undefined }),
+      body: JSON.stringify({ query, criteria: c ?? undefined, notes: c ? undefined : notes }),
     });
     const data = await res.json();
     setLoading(false);
@@ -80,8 +81,34 @@ export default function SearchPage() {
 
   const upd = (patch: Partial<Criteria>) => setCriteria((c) => (c ? { ...c, ...patch } : c));
 
+  // Notes stay on this device between sessions
+  useEffect(() => {
+    setNotes(localStorage.getItem('call-notes') ?? '');
+  }, []);
+  function updateNotes(v: string) {
+    setNotes(v);
+    localStorage.setItem('call-notes', v);
+  }
+
   return (
-    <div>
+    <div className="workspace">
+      <aside className="card sideboard">
+        <h2 style={{ marginTop: 0 }}>Notes from the call</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Jot things down while you talk. Your notes are matched against services along with the search.
+        </p>
+        <textarea
+          className="notes-canvas"
+          value={notes}
+          onChange={(e) => updateNotes(e.target.value)}
+          placeholder={'e.g.\nTwo kids (4 and 7), eldest school at Redfern\nNeeds somewhere safe tonight\nNo car — walk-in or near transport\nCentrelink payment stopped last week'}
+        />
+        {notes.trim() && (
+          <p className="muted" style={{ margin: '8px 0 0' }}>✓ Your notes will be included in the next search.</p>
+        )}
+      </aside>
+
+      <div className="main-col">
       <h1>What kind of service are you looking for?</h1>
       <p className="sub">Describe the support needed — in your own words. You can fix any detail below.</p>
 
@@ -221,6 +248,7 @@ export default function SearchPage() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

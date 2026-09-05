@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </nav>
-        <main className="container">{children}</main>
+        <main className="container wide">{children}</main>
       </body>
     </html>
   );

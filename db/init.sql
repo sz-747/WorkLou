@@ -63,6 +63,7 @@ CREATE TABLE verification_changes (
 CREATE TABLE referral_searches (
   id serial PRIMARY KEY,
   query text,
+  caseworker_notes text,
   parsed_criteria jsonb,
   corrected_criteria jsonb,
   result_ids integer[],

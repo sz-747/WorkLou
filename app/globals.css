@@ -23,6 +23,16 @@ body {
 }
 a { color: var(--accent); }
 .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+/* Search workspace: notes sideboard + search column */
+.container.wide { max-width: 1060px; }
+.workspace { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
+.sideboard { margin-bottom: 0; position: sticky; top: 64px; }
+.sideboard textarea.notes-canvas { min-height: 340px; line-height: 1.6; }
+@media (max-width: 900px) {
+  .workspace { grid-template-columns: 1fr; }
+  .sideboard { position: static; }
+  .sideboard textarea.notes-canvas { min-height: 140px; }
+}
 nav.top {
   background: var(--card);
   border-bottom: 1px solid var(--line);
@@ -31,7 +41,7 @@ nav.top {
   z-index: 5;
 }
 nav.top .inner {
-  max-width: 720px;
+  max-width: 1060px;
   margin: 0 auto;
   padding: 10px 16px;
   display: flex;

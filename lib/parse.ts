@@ -71,7 +71,7 @@ function localParse(q: string): Criteria {
   if (/no referral|without referral|self[- ]?refer/.test(text)) c.referralRequired = false;
   else if (/referral (needed|required)|agency referral/.test(text)) c.referralRequired = true;
 
-  if (/(with|and|has) (two|three|four|\d+|her)? ?(children|kids|child)\b|accepts children/.test(text)) {
+  if (/(with|and|has) (two|three|four|\d+|her)? ?(children|kids|child)\b|accepts children|(children|kids|child) (with her|in tow|at school)/.test(text)) {
     c.childrenAllowed = true;
   } else if (/no children|women only/.test(text)) {
     c.childrenAllowed = false;
@@ -80,7 +80,7 @@ function localParse(q: string): Criteria {
   return c;
 }
 
-const SYSTEM_PROMPT = `You convert a caseworker's short referral request into structured search parameters for a community services directory.
+const SYSTEM_PROMPT = `You convert a caseworker's short referral request into structured search parameters for a community services directory. The request may be followed by the caseworker's raw notes from the call with the client — use both when extracting criteria.
 Return ONLY a JSON object with these keys, using null when not stated:
 - serviceType: one of [emergency_accommodation, transitional_housing, food_assistance, legal_assistance, health_service, centrelink_support, dfv_service, financial_assistance]
 - location: one of [Redfern, Waterloo, Surry Hills, Newtown, Marrickville, Glebe, Ashfield, Bankstown, Parramatta, Campbelltown, Blacktown] or null
