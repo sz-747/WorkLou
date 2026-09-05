@@ -3,7 +3,7 @@
 ## Stack
 
 - Next.js fullstack (App Router, React, API routes) — one app to run and demo.
-- Postgres via **Prisma** (proposed; see Open decisions — Drizzle is the alternative).
+- Postgres via **Drizzle** (decided — lighter, closer to SQL, enough for this hackathon).
 - Docker compose in the dev environment: app + postgres.
 - LLM via existing secrets `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`.
 
@@ -44,7 +44,7 @@ Core idea: `services` + `service_attributes` (structured facts, each carrying pr
 | confirmed_by / confirmed_at | text / timestamptz | provider confirmation, when human |
 | notes | text | |
 
-Matching (Phase 3) is plain SQL over typed rows: e.g. `attr_type='need' AND key='housing'`, `key='min_age' AND value::int <= case_age`. No LLM in this path.
+Matching (Phase 3) is plain SQL over typed rows: e.g. `attr_type='need' AND value='housing'`, `key='visa' AND value = context->>'visa'`. No LLM in this path.
 
 ### cases
 | column | type | notes |
@@ -61,7 +61,7 @@ Matching (Phase 3) is plain SQL over typed rows: e.g. `attr_type='need' AND key=
 | id | uuid pk | |
 | case_id | uuid fk → cases | |
 | version | int | supersede rather than mutate |
-| context | jsonb | needs[], age_range, gender, suburb/catchment, languages[], children, urgency, risk_flags[], short summary |
+| context | jsonb | needs[], suburb/catchment, children, pets, income, visa, languages[], urgency, safety/preferences, safe_contact_method, short summary (gender dropped for now; refine with Lou's actual list later) |
 | status | text check | draft / approved |
 | extraction_model | text | provenance of the extraction |
 | approved_at | timestamptz | set when worker approves |
@@ -116,12 +116,10 @@ The updater (process A) writes new rows or refreshes `service_attributes` with `
 - Future migration: the `services` + `service_attributes` design is Lou's future canonical service database; the Excel import is just one `source_type`.
 - Avoid overengineering: no multi-tenancy, no auth for the hackathon, JSONB only for case context and candidate extraction output.
 
-## Open decisions
+## Decisions (all decided 2026-09-05)
 
-See the list presented to the user (also tracked here once decided):
-
-1. ORM: Prisma (proposed) vs Drizzle.
-2. Which machine-accessible sources to use for verify/updater/discovery in the hackathon (real service websites vs synthetic fixtures).
-3. Initial needs taxonomy for matching.
-4. Exact case-context fields for extraction.
-5. Single-user (no auth) confirmed for the hackathon?
+1. **ORM: Drizzle** — lighter, closer to SQL, enough for this hackathon.
+2. **Sources:** build data from real Lou's Excel + public service pages, but snapshot them into deterministic fixtures for the demo — live websites can't break it.
+3. **Needs taxonomy (initial, refine later with Lou's actual list):** housing/accommodation, DFV/safety, mental health/counselling, financial, legal, AOD, immigration/visa, children/family, health, employment, food/basic needs.
+4. **Case-context fields:** needs, suburb/catchment, children, pets, income, visa, languages, urgency, safety/preferences, safe-contact method, short summary. Gender dropped for now.
+5. **Auth:** none — single caseworker for the hackathon.

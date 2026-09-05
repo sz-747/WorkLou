@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-05 — Design decisions locked (pre-Phase 1)
+
+- Branch: `setup-branching-rules`
+- Changes: recorded the five design decisions in `docs/implementation_plan.md` (Drizzle ORM; real Excel/public-page data snapshot into deterministic fixtures; initial needs taxonomy; case-context fields with gender dropped; no auth / single caseworker)
+- DB changes: none
+- Tests run: reviewed plan for consistency (stack, context fields, matching examples)
+- Result: pass
+- Known issues: needs taxonomy is a placeholder until refined with Lou's actual list
+- Next phase: Phase 1 — Foundation (Next.js + Postgres + Drizzle schema + snapshot-fixture seed)
+
 ## 2026-09-05 — Phase 0: Project memory
 
 - Branch: `setup-branching-rules`
