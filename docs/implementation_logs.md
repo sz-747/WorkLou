@@ -206,3 +206,12 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 - Result: pass (10/10 brightdata, 17/17 discovery, 19/17 updater, live manual discovery run: SERP ok, blocked URLs logged as plain source failures, no unlocker references anywhere)
 - Known issues: blocked provider sites (HTTP 403) now always end as logged source failures — expected demo behaviour
 - Next phase: n/a
+
+## 2026-09-05 — Demo follow-up example seeder (Phase 6)
+
+- Why: no open due referral existed, so the follow-up structure couldn't be inspected; `src/db/demo-followup.ts` (npm-style run via `npx tsx`) seeds a realistic example on CASE-2026-001 through the app's real functions only (insertReferralDraft → markReferralSent → recordProviderResponse → real-LLM draftFollowUpText → storeFollowUpDraft). Idempotent: skips if an open Bright Path referral already exists.
+- DB changes: demo data only (one sent/responded referral to Bright Path Financial Counselling + timeline events)
+- Tests run: live verification of dashboard due-list and case-page stage 5
+- Result: pass
+- Known issues: none
+- Next phase: n/a
