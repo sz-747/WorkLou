@@ -1,0 +1,182 @@
+/**
+ * A2 presentation layer — Figma "Claude" page, A2 frame series.
+ * SCOPED: every rule is prefixed with `.a2` (page wrapper) or `.a2-nav` (shell),
+ * so /admin and /data keep the original globals.css look untouched.
+ * Tokens below are the exact values extracted from the Figma file.
+ */
+
+.a2,
+.a2-nav {
+  /* colour */
+  --a2-ink: #0b0f14;
+  --a2-muted: #6b7480;
+  --a2-accent: #c2410c;
+  --a2-success: #2fa36b;
+  --a2-divider: rgb(191 227 245 / 40%);
+  --a2-hairline: rgb(11 15 20 / 6%);
+  --a2-surface: rgb(255 255 255 / 60%);
+  --a2-surface-strong: #ffffff;
+  --a2-surface-soft: rgb(255 255 255 / 40%);
+  --a2-rest: rgb(255 255 255 / 6%);
+  /* shape */
+  --a2-r-sm: 10px;
+  --a2-r-md: 14px;
+  --a2-r-lg: 16px;
+  --a2-r-xl: 20px;
+  --a2-r-pill: 999px;
+  /* elevation */
+  --a2-shadow-1: 0 8px 24px rgb(11 15 20 / 6%);
+  --a2-shadow-2: 0 12px 40px rgb(11 15 20 / 8%);
+  /* type */
+  --a2-font: var(--font-instrument-sans), Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Global shell: A2 floating pill nav ───────────────────────────── */
+.a2-nav {
+  align-items: center;
+  border-bottom: 0;
+  font-family: var(--a2-font);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0;
+}
+.a2-nav .caseworker-nav {
+  align-items: center;
+  background: var(--a2-surface-strong);
+  border: 1px solid var(--a2-hairline);
+  border-radius: var(--a2-r-pill);
+  box-shadow: var(--a2-shadow-1);
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+}
+.a2-nav .caseworker-nav a {
+  border-radius: var(--a2-r-pill);
+  color: var(--a2-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+.a2-nav .caseworker-nav a:hover { background: rgb(11 15 20 / 4%); transform: translateY(-1px); }
+.a2-nav .caseworker-nav a:active { background: rgb(11 15 20 / 2%); transform: none; }
+.a2-nav .caseworker-nav a:focus-visible { outline: 2px solid var(--a2-accent); outline-offset: 2px; }
+.a2-nav .tools-menu > summary { color: var(--a2-muted); font-size: 0.75rem; }
+
+/* ── Page canvas ──────────────────────────────────────────────────── */
+.a2 {
+  color: var(--a2-ink);
+  font-family: var(--a2-font);
+}
+.a2 h1 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.22;
+  margin: 0;
+}
+.a2 h2 { font-size: 1.125rem; font-weight: 500; line-height: 1.22; margin: 0; }
+.a2 h3 { font-size: 1rem; font-weight: 500; margin: 0; }
+.a2 h4 { font-size: 0.9375rem; font-weight: 500; margin: 0; }
+.a2 a { color: var(--a2-ink); }
+.a2-page-head { margin: 0 0 1.5rem; }
+.a2-page-head .a2-sub {
+  color: var(--a2-muted);
+  font-size: 1rem;
+  margin: 0.5rem 0 0;
+}
+
+/* ── Cards + layout rhythm ────────────────────────────────────────── */
+.a2-card {
+  background: var(--a2-surface);
+  border: 1px solid var(--a2-hairline);
+  border-radius: var(--a2-r-xl);
+  box-shadow: var(--a2-shadow-1);
+  margin: 0 0 1.25rem;
+  padding: 1.5rem;
+}
+.a2-card > h2,
+.a2-card > h3 { margin-bottom: 1rem; }
+.a2-card-title {
+  align-items: baseline;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+/* ── Checklist rows (A2 "Needs attention") ────────────────────────── */
+.a2-rows { list-style: none; margin: 0; padding: 0; }
+.a2-rows > li {
+  align-items: center;
+  border-top: 1px solid var(--a2-divider);
+  display: flex;
+  gap: 0.875rem;
+  justify-content: space-between;
+  padding: 0.875rem 0.25rem;
+  transition: background-color 120ms ease;
+}
+.a2-rows > li:first-child { border-top: 0; }
+.a2-rows > li:hover { background: rgb(255 255 255 / 45%); }
+.a2-row-main { display: grid; flex: 1 1 auto; gap: 0.2rem; justify-items: start; min-width: 0; }
+.a2-row-main > a,
+.a2-row-main > strong {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.a2-row-main > a:hover { text-decoration: underline; }
+.a2-row-detail { color: var(--a2-muted); font-size: 0.8125rem; }
+.a2-row-meta { color: var(--a2-muted); font-size: 0.8125rem; white-space: nowrap; }
+.a2-row-meta.is-due { color: var(--a2-accent); font-weight: 500; }
+.a2-row-empty { color: var(--a2-muted); font-size: 0.9375rem; padding: 0.5rem 0.25rem; }
+.a2-mark {
+  border: 1.5px solid rgb(11 15 20 / 25%);
+  border-radius: 50%;
+  flex: 0 0 auto;
+  height: 1rem;
+  width: 1rem;
+}
+
+/* ── Tables (A2 card table) ───────────────────────────────────────── */
+.a2-table-card {
+  background: var(--a2-surface);
+  border: 1px solid var(--a2-hairline);
+  border-radius: var(--a2-r-xl);
+  box-shadow: var(--a2-shadow-1);
+  overflow: hidden;
+  padding: 0.5rem 1.5rem 1rem;
+}
+.a2 table { border-collapse: collapse; margin: 0; width: 100%; }
+.a2 thead th {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--a2-divider);
+  color: var(--a2-muted);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  padding: 1rem 0.75rem;
+  text-align: left;
+}
+.a2 tbody td {
+  border: 0;
+  border-bottom: 1px solid var(--a2-divider);
+  font-size: 0.9375rem;
+  padding: 1rem 0.75rem;
+  vertical-align: middle;
+}
+.a2 tbody tr:last-child td { border-bottom: 0; }
+.a2 tbody tr { transition: background-color 120ms ease; }
+.a2 tbody tr:hover { background: rgb(255 255 255 / 45%); }
+.a2 tbody td:first-child { font-weight: 500; }
+.a2 tbody a { font-weight: 500; text-decoration: none; }
+.a2 tbody a:hover { text-decoration: underline; }
+
+/* ── Footer link ──────────────────────────────────────────────────── */
+.a2-foot { margin: 1.5rem 0 0; }
+.a2-foot a {
+  color: var(--a2-ink);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
