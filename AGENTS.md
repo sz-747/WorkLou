@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## Rules — always apply
+
+**`rules.md`** (repo root) contains a five-question pre-send checklist. Run it on EVERY answer before sending. Failing one question → fix it before sending.
+
 ## Skills — always auto-invoke
 
 The skills in `skills/` are active project instructions. Do not wait to be asked — invoke them automatically whenever their trigger condition occurs:
