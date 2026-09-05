@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-05 — Phase 4: Verify (provider-only unknowns)
+
+- Branch: `setup-branching-rules`
+- Changes: `src/lib/verify.ts` (pure `groupFacts`: machine-known vs genuinely-provider-only unknowns incl. missing facts for context-relevant criteria, stale facts with kept history; `recordProviderConfirmation` updates the EXISTING fact row in place — or inserts the missing one — with source_type provider_confirmed, who/when, notes, retrieved_at; `markFactStale` flips only verification_status, never deleting history; `getServiceForVerify`); `src/app/women/[id]/verify-actions.ts` (server actions with validation errors surfaced via `verifyError` param); `VerifyStage.tsx` replaces the stage-3 stub: service picker limited to Find-support-suitable services, "Already known from machine-accessible sources" group (source + freshness per fact, mark-stale control), "Needs provider confirmation" group (unknown values, stale facts with visible history, missing facts as explicit unknowns — never assumed), one inline confirmation form per item (value / confirmed by / when / notes). No LLM, no machine refetching (Phase 7A's job); worker never re-checks digital facts manually
+- DB changes: none (no schema changes; provider confirmations update existing service_attributes rows — shared knowledge, never parallel duplicates)
+- Tests run: `npm run db:test:verify` — 15/15 passed (pure grouping: unknowns never claimed known, missing-criteria unknowns, stale history kept, no duplicates across groups, irrelevant criteria produce no phantom unknowns; DB flow: confirmation updates existing row with full provenance, no duplicate fact, fresh query reuses it like another case, Find-support match reflects the confirmation, missing-fact insert, mark-stale keeps source/who/when/notes and returns the fact to the needs list, cleanup); regressions `db:test` 21/21, `db:test:context` 24/24, `db:test:matching` 24/24; live preview verified: Watershed selected from Find-support results → 3 known / 6 needs-confirmation; real form submission of a pet-policy confirmation → persisted in DB (value/welcome, provider_confirmed, Caseworker — phone, today, notes), UI moved it to the known group, and Find support immediately showed "pets: matched — Caseworker confirmed 0 day(s) ago"; 0 console errors
+- Result: pass with notes — mark-stale button verified by automated tests (lib-level update + grouping history) but its live UI click not exercised before the preview budget ran out; left for the user manual test
+- Known issues: the seeded Watershed pets fact is now a provider-confirmed "welcome" row (written by the live verification, by design — shared knowledge); user can mark it stale to demo expiry and re-confirm
+- Next phase: awaiting user manual test of Phase 4; then Phase 5 — Refer — NOT started
+
 ## 2026-09-05 — Phase 3: Find support (deterministic matching from approved context)
 
 - Branch: `setup-branching-rules`

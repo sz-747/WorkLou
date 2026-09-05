@@ -11,7 +11,9 @@ import {
 } from "../../../db/schema";
 import { ContextStage } from "./ContextStage";
 import { FindSupportStage } from "./FindSupportStage";
+import { VerifyStage } from "./VerifyStage";
 import { getLatestApprovedContext, getMatchCandidates, matchServices } from "../../../lib/matching";
+import { getServiceForVerify } from "../../../lib/verify";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +25,10 @@ export default async function CaseWorkspace({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ extractError?: string }>;
+  searchParams: Promise<{ extractError?: string; verify?: string; verifyError?: string }>;
 }) {
   const { id } = await params;
-  const { extractError } = await searchParams;
+  const { extractError, verify, verifyError } = await searchParams;
 
   const [caseRow] = await db.select().from(cases).where(eq(cases.id, id));
   if (!caseRow) notFound();
@@ -56,13 +58,11 @@ export default async function CaseWorkspace({
     ? matchServices(approvedContext.context, await getMatchCandidates())
     : null;
 
+  const suitable = (matchResults ?? []).filter((r) => r.suitable);
+  const verifyServiceId = verify && suitable.some((r) => r.service.id === verify) ? verify : null;
+  const selectedService = verifyServiceId ? await getServiceForVerify(verifyServiceId) : null;
+
   const stages = [
-    {
-      n: 3,
-      name: "Verify",
-      state: "Not built yet.",
-      placeholder: "Auto-resolve machine-accessible facts; flag provider-only facts. (Phase 4)",
-    },
     {
       n: 4,
       name: "Refer",
@@ -102,6 +102,16 @@ export default async function CaseWorkspace({
       <section style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
         <h3 style={{ margin: "0.25rem 0" }}>2. Find support</h3>
         <FindSupportStage approved={approvedContext} results={matchResults} />
+      </section>
+      <section style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
+        <h3 style={{ margin: "0.25rem 0" }}>3. Verify</h3>
+        <VerifyStage
+          caseId={id}
+          suitable={suitable.map((r) => ({ id: r.service.id, name: r.service.name }))}
+          selected={selectedService}
+          context={approvedContext?.context ?? null}
+          verifyError={verifyError}
+        />
       </section>
       {stages.map((s) => (
         <section key={s.n} style={{ border: "1px solid #eee", padding: "0.5rem 1rem", margin: "0.5rem 0" }}>
