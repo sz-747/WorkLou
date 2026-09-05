@@ -30,6 +30,7 @@ These rules apply to every new branch/session on this repository. Follow them ex
 - Fresh seed: `docker compose -f docker-compose.base44.yml exec -T web npm run db:seed` (skips if already seeded)
 - Direct DB: `docker compose -f docker-compose.base44.yml exec db psql -U lou -d lousplace`; Postgres is also exposed on host port 5432 (dev-only creds: lou / lou_dev_only, db lousplace)
 - `drizzle-kit push` (not generate/migrate) keeps the DB in sync — schema source of truth is `src/db/schema.ts`
+- Updater (Phase 7A): run on demand with `curl -X POST "http://localhost:3000/api/updater/run?trigger=manual"` (or the Admin button); an hourly `updater-cron` compose sidecar calls the same endpoint with `trigger=scheduled`. Runs are idempotent — safe to trigger repeatedly. Bright Data scraping needs `BRIGHT_DATA_API_KEY`/`BRIGHT_DATA_DATASET_ID` env (optional; fixtures/direct sources work without).
 - Source-of-truth docs live in `docs/` — read all four before any work (see Session start rules)
 
 ## Verification checklist (before reporting done)

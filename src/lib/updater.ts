@@ -100,8 +100,13 @@ export function planForFact(
       reason: "contact/details changed on the source page",
     };
   }
-  const stored = storedFacts.find((a) => a.attrType === fact.attrType && a.key === fact.key);
-  if (!stored) {
+  // multi-value aware: a key like `need` can have several stored rows.
+  // Same value → refresh that row; unknown value on a single-row key →
+  // value change; unknown value on a multi-row key → additional value.
+  const storedSameKey = storedFacts.filter((a) => a.attrType === fact.attrType && a.key === fact.key);
+  const matching = storedSameKey.find((a) => a.value === fact.value);
+  if (matching) return { kind: "refresh", attrId: matching.id, current: matching };
+  if (storedSameKey.length === 0) {
     return {
       kind: "candidate",
       scope: "attribute",
@@ -113,7 +118,19 @@ export function planForFact(
       reason: "new fact reported by the source — not previously recorded",
     };
   }
-  if (stored.value === fact.value) return { kind: "refresh", attrId: stored.id, current: stored };
+  if (storedSameKey.length > 1) {
+    return {
+      kind: "candidate",
+      scope: "attribute",
+      attributeId: null,
+      attrType: fact.attrType,
+      key: fact.key,
+      currentValue: null,
+      newValue: fact.value,
+      reason: "additional value reported by the source page (stored values unchanged)",
+    };
+  }
+  const stored = storedSameKey[0];
   return {
     kind: "candidate",
     scope: "attribute",
@@ -135,43 +152,63 @@ async function upsertCandidate(
   action: Extract<PlannedAction, { kind: "candidate" }>,
   log: LogEntry[],
 ): Promise<"created" | "updated" | "skipped"> {
-  const [existing] = await db
+  const sameTarget = and(
+    eq(updateCandidates.serviceId, serviceId),
+    eq(updateCandidates.scope, action.scope),
+    eq(updateCandidates.key, action.key),
+    action.scope === "attribute" && action.attrType
+      ? eq(updateCandidates.attrType, action.attrType)
+      : undefined,
+  );
+
+  // additions/new facts (currentValue null, e.g. multi-value needs) dedupe
+  // per proposed value — several can be pending at once without clobbering
+  const [sameValue] = await db
     .select()
     .from(updateCandidates)
-    .where(
-      and(
-        eq(updateCandidates.serviceId, serviceId),
-        eq(updateCandidates.scope, action.scope),
-        eq(updateCandidates.key, action.key),
-        eq(updateCandidates.status, "pending_review"),
-        action.scope === "attribute" && action.attrType
-          ? eq(updateCandidates.attrType, action.attrType)
-          : undefined,
-      ),
-    )
+    .where(and(sameTarget, eq(updateCandidates.newValue, action.newValue)))
+    .orderBy(desc(updateCandidates.updatedAt))
     .limit(1);
-
-  if (existing) {
-    if (existing.newValue === action.newValue) {
-      log.push({ at: new Date().toISOString(), message: `candidate dedup: ${action.key} still proposes "${action.newValue}"` });
+  if (sameValue) {
+    if (sameValue.status === "pending_review") {
+      log.push({ at: new Date().toISOString(), message: `candidate dedup: ${action.key} "${action.newValue}" already pending` });
       return "skipped";
     }
-    await db
-      .update(updateCandidates)
-      .set({
-        runId,
-        newValue: action.newValue,
-        currentValue: action.currentValue,
-        sourceName: snapshot.sourceName,
-        sourceUrl: snapshot.sourceUrl,
-        evidenceType: snapshot.evidenceType,
-        retrievedAt: snapshot.retrievedAt,
-        reason: action.reason,
-        updatedAt: new Date(),
-      })
-      .where(eq(updateCandidates.id, existing.id));
-    log.push({ at: new Date().toISOString(), message: `candidate updated: ${action.key} now proposes "${action.newValue}" (latest evidence)` });
-    return "updated";
+    if (sameValue.status === "rejected" && sameValue.sourceUrl === snapshot.sourceUrl) {
+      log.push({
+        at: new Date().toISOString(),
+        message: `candidate dedup: ${action.key} "${action.newValue}" was rejected on this source — not re-proposed`,
+      });
+      return "skipped";
+    }
+  }
+
+  // value changes (currentValue set) replace the pending candidate for the
+  // same stored value in place — newest evidence wins
+  if (action.currentValue !== null) {
+    const [latestChange] = await db
+      .select()
+      .from(updateCandidates)
+      .where(and(sameTarget, eq(updateCandidates.currentValue, action.currentValue)))
+      .orderBy(desc(updateCandidates.updatedAt))
+      .limit(1);
+    if (latestChange?.status === "pending_review") {
+      await db
+        .update(updateCandidates)
+        .set({
+          runId,
+          newValue: action.newValue,
+          sourceName: snapshot.sourceName,
+          sourceUrl: snapshot.sourceUrl,
+          evidenceType: snapshot.evidenceType,
+          retrievedAt: snapshot.retrievedAt,
+          reason: action.reason,
+          updatedAt: new Date(),
+        })
+        .where(eq(updateCandidates.id, latestChange.id));
+      log.push({ at: new Date().toISOString(), message: `candidate updated: ${action.key} now proposes "${action.newValue}" (latest evidence)` });
+      return "updated";
+    }
   }
 
   await db.insert(updateCandidates).values({
@@ -198,8 +235,12 @@ async function upsertCandidate(
   return "created";
 }
 
-/** Run the updater over all active services. Never throws half-way: failures are recorded and the run continues. */
-export async function runUpdater({ trigger }: { trigger: RunTrigger }): Promise<RunSummary> {
+/**
+ * Run the updater over all active services. Never throws half-way: failures
+ * are recorded and the run continues. `only` scopes the run to specific
+ * service ids (used by the test suite to stay hermetic).
+ */
+export async function runUpdater({ trigger, only }: { trigger: RunTrigger; only?: string[] }): Promise<RunSummary> {
   const [run] = await db
     .insert(updaterRuns)
     .values({ trigger, status: "running", log: [] })
@@ -214,7 +255,9 @@ export async function runUpdater({ trigger }: { trigger: RunTrigger }): Promise<
   let servicesChecked = 0;
 
   try {
-    const active = await db.select().from(services).where(eq(services.status, "active"));
+    const active = (await db.select().from(services).where(eq(services.status, "active"))).filter(
+      (s) => !only || only.includes(s.id),
+    );
 
     for (const service of active) {
       servicesChecked++;

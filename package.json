@@ -14,6 +14,7 @@
     "db:test:followup": "tsx src/db/test-followup.ts",
     "db:test:document": "tsx src/db/test-document.ts",
     "db:test:admin": "tsx src/db/test-admin.ts",
+    "db:test:updater": "tsx src/db/test-updater.ts",
     "db:backfill-sources": "tsx src/db/backfill-field-sources.ts"
   },
   "dependencies": {
