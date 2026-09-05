@@ -1,5 +1,8 @@
 # AGENTS.md
 
+**Read `PROJECT_STATE.md` first** — it is the persistent project memory (goal, architecture,
+schema, completed modules, constraints, next module). Update it after completing each module.
+
 ## Rules — always apply
 
 **`rules.md`** (repo root) contains a five-question pre-send checklist. Run it on EVERY answer before sending. Failing one question → fix it before sending.
