@@ -15,6 +15,8 @@
     "db:test:document": "tsx src/db/test-document.ts",
     "db:test:admin": "tsx src/db/test-admin.ts",
     "db:test:updater": "tsx src/db/test-updater.ts",
+    "db:test:brightdata": "tsx src/db/test-brightdata.ts",
+    "db:test:discovery": "tsx src/db/test-discovery.ts",
     "db:backfill-sources": "tsx src/db/backfill-field-sources.ts"
   },
   "dependencies": {

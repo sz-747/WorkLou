@@ -204,7 +204,7 @@ export const updateCandidates = pgTable(
     check("update_candidates_scope_check", sql`${t.scope} in ('service_field','attribute')`),
     check(
       "update_candidates_evidence_type_check",
-      sql`${t.evidenceType} in ('fixture','direct_fetch','bright_data')`,
+      sql`${t.evidenceType} in ('fixture','direct_fetch','web_unlocker')`,
     ),
     check(
       "update_candidates_status_check",
@@ -329,6 +329,9 @@ export const discoveryCandidates = pgTable(
     dedupKey: text("dedup_key").notNull(),
     extractedData: jsonb("extracted_data"),
     status: text("status").notNull().default("pending_review"),
+    /** provenance: how/when the candidate page content was retrieved */
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }),
+    evidenceType: text("evidence_type"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

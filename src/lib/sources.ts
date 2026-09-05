@@ -1,26 +1,35 @@
 /**
- * Phase 7A — source adapters for the existing-service updater.
+ * Phase 7 — source adapters for the existing-service updater.
  * Every adapter normalises what it retrieves into the same SourceSnapshot
  * shape (facts + source URL + evidence type + retrieval time) before the
  * updater compares anything with canonical data.
  *
- * Adapter selection is by service.source_url:
- *  - URL present in FIXTURES  → deterministic snapshot fixture (demo path,
- *    per implementation plan decision #2 — live websites can't break it)
- *  - "brightdata:<real url>"  → Bright Data Web Scraper API over plain HTTP
- *    (POST /datasets/v3/scrape, falling back to trigger → poll → download).
- *    Requires BRIGHT_DATA_API_KEY + BRIGHT_DATA_DATASET_ID. No CLI needed.
- *  - "https://…"             → simple direct fetch of an official page that
- *    serves the normalised snapshot JSON shape
+ * Adapter selection by service.source_url:
+ *  - URL present in FIXTURES → deterministic snapshot fixture (demo path,
+ *    implementation plan decision #2 — live websites can't break it)
+ *  - "https://…" → direct fetch first. If the direct fetch itself fails
+ *    (network error / non-200, e.g. a provider site that blocks plain
+ *    fetching), fall back to the Bright Data Web Unlocker adapter
+ *    (src/lib/brightdata.ts) when BRIGHT_DATA_API_KEY +
+ *    BRIGHT_DATA_UNLOCKER_ZONE are configured.
+ *
+ *    Content from either path is normalised the same way: pages serving the
+ *    normalised JSON payload are used as-is; any other content (HTML or
+ *    the Web Unlocker's markdown) goes through LLM extraction
+ *    (src/lib/page-extraction.ts).
  *
  * Any adapter failure throws — the updater records it as a source failure
- * and never touches canonical data.
+ * and never touches canonical data. The unlocker is behind a small
+ * injectable boundary (SourceFetchDeps) so the provider can be replaced
+ * later without touching the updater.
  */
-export type SourceFact =
-  | { kind: "service_field"; field: string; value: string }
-  | { kind: "attribute"; attrType: string; key: string; value: string };
+import { unlockerFetch } from "./brightdata";
+import { extractFactsFromPage } from "./page-extraction";
+import { normaliseFacts, type EvidenceType, type SourcePayload } from "./source-facts";
 
-export type EvidenceType = "fixture" | "direct_fetch" | "bright_data";
+export { normaliseFacts } from "./source-facts";
+export type { EvidenceType, SourceFact } from "./source-facts";
+import type { SourceFact } from "./source-facts";
 
 export type SourceSnapshot = {
   sourceName: string;
@@ -29,9 +38,6 @@ export type SourceSnapshot = {
   retrievedAt: Date;
   facts: SourceFact[];
 };
-
-/** Raw page payload every non-fixture source is expected to serve. */
-type SourcePayload = { sourceName?: string; facts?: unknown };
 
 /**
  * Deterministic snapshots of the demo services' official pages
@@ -67,111 +73,67 @@ export const FIXTURES: Record<string, { sourceName: string; facts: SourceFact[] 
   },
 };
 
-function normaliseFacts(payload: SourcePayload, sourceUrl: string): SourceFact[] {
-  if (!Array.isArray(payload.facts)) {
-    throw new Error(`source at ${sourceUrl} did not return a normalised facts payload`);
-  }
-  const facts: SourceFact[] = [];
-  for (const f of payload.facts) {
-    if (!f || typeof f !== "object") continue;
-    const cand = f as Partial<SourceFact>;
-    if (cand.kind === "service_field" && typeof cand.field === "string" && typeof cand.value === "string") {
-      facts.push({ kind: "service_field", field: cand.field, value: cand.value });
-    } else if (
-      cand.kind === "attribute" &&
-      typeof cand.attrType === "string" &&
-      typeof cand.key === "string" &&
-      typeof cand.value === "string"
-    ) {
-      facts.push({ kind: "attribute", attrType: cand.attrType, key: cand.key, value: cand.value });
-    }
-  }
-  if (facts.length === 0) {
-    throw new Error(`source at ${sourceUrl} returned no usable facts`);
-  }
-  return facts;
-}
+export type FetchedPage = { ok: boolean; status: number; text: string };
 
-async function fetchJson(url: string, init: RequestInit, timeoutMs: number): Promise<unknown> {
+/** Injectable boundaries — tests stub these; defaults are the real implementations. */
+export type SourceFetchDeps = {
+  httpGet?: (url: string) => Promise<FetchedPage>;
+  unlocker?: (url: string) => Promise<{ statusCode: number; body: string }>;
+  extract?: (content: string, sourceUrl: string) => Promise<{ sourceName: string; facts: SourceFact[] }>;
+};
+
+async function directHttpGet(url: string, timeoutMs = 10_000): Promise<FetchedPage> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { ...init, signal: controller.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
-    return await res.json();
+    const res = await fetch(url, { signal: controller.signal });
+    return { ok: res.ok, status: res.status, text: await res.text() };
   } finally {
     clearTimeout(timer);
   }
 }
 
-/** Simple direct fetch of an official page serving the normalised payload. */
-async function directFetch(serviceUrl: string): Promise<SourceSnapshot> {
-  const payload = (await fetchJson(serviceUrl, {}, 10_000)) as SourcePayload;
-  return {
-    sourceName: payload.sourceName ?? serviceUrl,
-    sourceUrl: serviceUrl,
-    evidenceType: "direct_fetch",
-    retrievedAt: new Date(),
-    facts: normaliseFacts(payload, serviceUrl),
-  };
-}
-
 /**
- * Bright Data Web Scraper API over plain HTTP (no CLI).
- * Uses the synchronous endpoint when possible; if Bright Data returns a
- * snapshot_id (long job), polls progress then downloads.
+ * Normalise fetched page content into a snapshot: JSON payloads as-is,
+ * anything else through LLM extraction.
  */
-async function brightDataScrape(pageUrl: string): Promise<SourceSnapshot> {
-  const apiKey = process.env.BRIGHT_DATA_API_KEY;
-  const datasetId = process.env.BRIGHT_DATA_DATASET_ID;
-  if (!apiKey || !datasetId) {
-    throw new Error("Bright Data scrape requested but BRIGHT_DATA_API_KEY / BRIGHT_DATA_DATASET_ID are not configured");
+async function snapshotFromContent(
+  content: string,
+  sourceUrl: string,
+  evidenceType: EvidenceType,
+  deps: SourceFetchDeps,
+): Promise<SourceSnapshot> {
+  let payload: SourcePayload | null = null;
+  try {
+    payload = JSON.parse(content) as SourcePayload;
+  } catch {
+    /* not JSON — normal case for real provider pages */
   }
-  const auth = { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" };
-
-  const scrape = (await fetchJson(
-    `https://api.brightdata.com/datasets/v3/scrape?dataset_id=${datasetId}&format=json`,
-    { method: "POST", headers: auth, body: JSON.stringify([{ url: pageUrl }]) },
-    50_000,
-  )) as Record<string, unknown>;
-
-  let records = scrape;
-  // long job: poll progress until ready, then download the snapshot
-  if (typeof scrape.snapshot_id === "string") {
-    const snapshotId = scrape.snapshot_id;
-    const deadline = Date.now() + 90_000;
-    for (;;) {
-      await new Promise((r) => setTimeout(r, 10_000));
-      const progress = (await fetchJson(
-        `https://api.brightdata.com/datasets/v3/progress/${snapshotId}`,
-        { headers: auth },
-        15_000,
-      )) as Record<string, unknown>;
-      const status = progress.status;
-      if (status === "failed") throw new Error(`Bright Data snapshot ${snapshotId} failed`);
-      if (status === "ready") break;
-      if (Date.now() > deadline) throw new Error(`Bright Data snapshot ${snapshotId} timed out`);
+  if (payload) {
+    try {
+      return {
+        sourceName: payload.sourceName ?? sourceUrl,
+        sourceUrl,
+        evidenceType,
+        retrievedAt: new Date(),
+        facts: normaliseFacts(payload, sourceUrl),
+      };
+    } catch {
+      /* JSON but not a normalised payload — fall through to extraction */
     }
-    records = (await fetchJson(
-      `https://api.brightdata.com/datasets/v3/snapshot/${snapshotId}?format=json`,
-      { headers: auth },
-      30_000,
-    )) as Record<string, unknown>;
   }
-
-  const list = Array.isArray(records) ? records : [records];
-  const payload = (list[0] ?? {}) as SourcePayload;
+  const extracted = await (deps.extract ?? extractFactsFromPage)(content, sourceUrl);
   return {
-    sourceName: payload.sourceName ?? pageUrl,
-    sourceUrl: pageUrl,
-    evidenceType: "bright_data",
+    sourceName: extracted.sourceName,
+    sourceUrl,
+    evidenceType,
     retrievedAt: new Date(),
-    facts: normaliseFacts(payload, pageUrl),
+    facts: extracted.facts,
   };
 }
 
 /** Fetch the current machine-accessible snapshot for a service. */
-export async function fetchSnapshot(serviceUrl: string): Promise<SourceSnapshot> {
+export async function fetchSnapshot(serviceUrl: string, deps: SourceFetchDeps = {}): Promise<SourceSnapshot> {
   if (FIXTURES[serviceUrl]) {
     const fixture = FIXTURES[serviceUrl];
     return {
@@ -182,7 +144,40 @@ export async function fetchSnapshot(serviceUrl: string): Promise<SourceSnapshot>
       facts: fixture.facts,
     };
   }
-  if (serviceUrl.startsWith("brightdata:")) return brightDataScrape(serviceUrl.slice("brightdata:".length));
-  if (/^https?:\/\//.test(serviceUrl)) return directFetch(serviceUrl);
-  throw new Error("no machine-accessible source configured for this service");
+  if (!/^https?:\/\//.test(serviceUrl)) {
+    throw new Error("no machine-accessible source configured for this service");
+  }
+
+  // direct fetch first
+  const httpGet = deps.httpGet ?? directHttpGet;
+  let page: FetchedPage | null = null;
+  let directError: string;
+  try {
+    page = await httpGet(serviceUrl);
+    directError = `HTTP ${page.status}`;
+  } catch (err) {
+    directError = err instanceof Error ? err.message : String(err);
+  }
+  if (page?.ok) return snapshotFromContent(page.text, serviceUrl, "direct_fetch", deps);
+
+  // Web Unlocker fallback for provider sites normal fetching can't reach
+  const unlocker = deps.unlocker ?? unlockerDefault();
+  if (!unlocker) {
+    throw new Error(
+      `direct fetch of ${serviceUrl} failed (${directError}); Web Unlocker fallback not configured (BRIGHT_DATA_API_KEY / BRIGHT_DATA_UNLOCKER_ZONE)`,
+    );
+  }
+  try {
+    const content = await unlocker(serviceUrl);
+    return await snapshotFromContent(content.body, serviceUrl, "web_unlocker", deps);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`direct fetch of ${serviceUrl} failed (${directError}); Web Unlocker fallback also failed (${msg})`);
+  }
+}
+
+/** Default unlocker boundary: the real Bright Data adapter, when configured. */
+function unlockerDefault(): SourceFetchDeps["unlocker"] {
+  if (!process.env.BRIGHT_DATA_API_KEY || !process.env.BRIGHT_DATA_UNLOCKER_ZONE) return null;
+  return (url: string) => unlockerFetch(url);
 }

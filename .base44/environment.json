@@ -17,6 +17,21 @@
       "name": "LLM_MODEL",
       "description": "Model name to use for extraction/drafting",
       "requiredAtBoot": false
+    },
+    {
+      "name": "BRIGHT_DATA_API_KEY",
+      "description": "Bright Data API token (Account settings → API tokens). Used by both the SERP API (discovery) and Web Unlocker (content retrieval) adapters.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "BRIGHT_DATA_SERP_ZONE",
+      "description": "Bright Data SERP API zone name (Web Scraper API → SERP API zone, e.g. serp_api1). Used for new-service discovery.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "BRIGHT_DATA_UNLOCKER_ZONE",
+      "description": "Bright Data Web Unlocker zone name (Web Unlocker API zone, e.g. web_unlocker1). Used as fallback when a provider page can't be fetched directly.",
+      "requiredAtBoot": false
     }
   ]
 }

@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { getDiscoveryCandidates, getServicesOverview } from "../../lib/admin";
 import { getUpdateCandidates, getUpdaterRuns } from "../../lib/updater";
-import { approveCandidate, rejectCandidate, runUpdaterAction } from "./actions";
+import { approveCandidate, rejectCandidate, runDiscoveryAction, runUpdaterAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -114,9 +114,14 @@ function SourcePill({ sourceType }: { sourceType: string | null }) {
 export default async function AdminServices({
   searchParams,
 }: {
-  searchParams: Promise<{ updaterMsg?: string; updaterError?: string }>;
+  searchParams: Promise<{
+    updaterMsg?: string;
+    updaterError?: string;
+    discoveryMsg?: string;
+    discoveryError?: string;
+  }>;
 }) {
-  const { updaterMsg, updaterError } = await searchParams;
+  const { updaterMsg, updaterError, discoveryMsg, discoveryError } = await searchParams;
   const [overview, candidates, runs, updateCands] = await Promise.all([
     getServicesOverview(),
     getDiscoveryCandidates(),
@@ -134,6 +139,8 @@ export default async function AdminServices({
 
       {updaterMsg && <p style={{ color: "#15803d", fontSize: "0.85rem" }}>{updaterMsg}</p>}
       {updaterError && <p style={{ color: "#b91c1c", fontSize: "0.85rem" }}>Updater error: {updaterError}</p>}
+      {discoveryMsg && <p style={{ color: "#15803d", fontSize: "0.85rem" }}>{discoveryMsg}</p>}
+      {discoveryError && <p style={{ color: "#b91c1c", fontSize: "0.85rem" }}>Discovery error: {discoveryError}</p>}
 
       {/* --- Phase 7A: existing-service updater --- */}
       <h2>Existing-service updater</h2>
@@ -278,9 +285,14 @@ export default async function AdminServices({
 
       <h2>Discovery candidates (queue for review)</h2>
       <p style={{ fontSize: "0.85rem" }}>
-        New-service candidates found by the discovery process (Phase 7B). Review/merge
-        actions arrive with that phase — for now the queue is inspectable here.
+        New-service candidates found by the discovery process: SERP API (Bright Data) → provider
+        URLs → direct fetch / Web Unlocker → normalise → dedupe → this review queue. Review/merge
+        actions arrive with the rest of Phase 7B — for now the queue is inspectable here. Nothing
+        is auto-merged into the service list.
       </p>
+      <form action={runDiscoveryAction} style={{ margin: "0.4rem 0" }}>
+        <button type="submit">Run discovery now</button>
+      </form>
       {candidates.length === 0 ? (
         <p style={{ fontSize: "0.85rem" }}>No candidates queued yet.</p>
       ) : (
@@ -290,6 +302,8 @@ export default async function AdminServices({
               <th>Name</th>
               <th>Found at</th>
               <th>Source</th>
+              <th>Retrieved</th>
+              <th>Evidence</th>
               <th>Status</th>
               <th>Extracted data</th>
             </tr>
@@ -307,8 +321,10 @@ export default async function AdminServices({
                     "—"
                   )}
                 </td>
+                <td>{c.sourceName ?? "—"}</td>
+                <td>{fmtDate(c.retrievedAt)}</td>
                 <td>
-                  {c.sourceName ?? "—"}
+                  {c.evidenceType ? <span className="pill">{c.evidenceType.replace(/_/g, " ")}</span> : "—"}
                 </td>
                 <td>
                   <span className="pill">{c.status.replace(/_/g, " ")}</span>
