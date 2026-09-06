@@ -364,13 +364,13 @@ export function DotMorphTitle({
         </span>
       </h1>
       <button
-        aria-label="Help More Women Now. Continue"
+        aria-label="Let's help more women now. Continue"
         className={styles.cta}
         disabled={animating}
         onClick={activate}
         type="button"
       >
-        <span>Help More Women Now</span>
+        <span>Let's help more women now.</span>
         <span aria-hidden="true" className={styles.arrow}>→</span>
       </button>
     </>
