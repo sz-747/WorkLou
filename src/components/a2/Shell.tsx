@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
-import { ALERTS, CASEWORKER, IDENTITY_MENU } from "../../lib/a2-mock";
+import { CASEWORKER, IDENTITY_MENU } from "../../lib/a2-mock";
+import type { AlertsView } from "../../lib/a2/alerts";
+import { AlertsMenu } from "./AlertsMenu";
 import { SearchGlyph } from "./glyphs";
 import { Logo } from "./Logo";
 import { NavActiveLoop } from "./NavActiveLoop";
@@ -19,7 +21,7 @@ const NAV = [
 
 /** Nav / Pill + Nav / Island from the A2 frames, with the alerts and identity
  *  popovers (A2 / Today · alerts) and the spotlight overlay (A2 / Spotlight). */
-export function Shell() {
+export function Shell({ alerts }: { alerts: AlertsView }) {
   const pathname = usePathname() ?? "";
   const [open, setOpen] = useState<"alerts" | "identity" | null>(null);
   const [spotlight, setSpotlight] = useState(false);
@@ -52,28 +54,12 @@ export function Shell() {
           <SearchGlyph />
         </button>
 
-        <span className="a2s-pop-wrap">
-          <button
-            type="button"
-            className="a2s-island-btn"
-            aria-expanded={open === "alerts"}
-            onClick={() => setOpen(open === "alerts" ? null : "alerts")}
-          >
-            <span className="a2s-island-label">Alerts</span>
-            <span className="a2s-badge">{ALERTS.count}</span>
-          </button>
-          {open === "alerts" && (
-            <div className="a2s-pop" role="dialog" aria-label="Alerts">
-              <h3>{ALERTS.title}</h3>
-              <ul>
-                {ALERTS.items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <p className="a2s-pop-foot">{ALERTS.markAll}</p>
-            </div>
-          )}
-        </span>
+        <AlertsMenu
+          alerts={alerts}
+          open={open === "alerts"}
+          onToggle={() => setOpen(open === "alerts" ? null : "alerts")}
+          onNavigate={() => setOpen(null)}
+        />
 
         <span className="a2s-pop-wrap">
           <button
