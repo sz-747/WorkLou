@@ -16,8 +16,12 @@ type Particle = Point & {
 };
 
 const TITLE_COLORS = ["#214c3f", "#2f6f55", "#c2410c", "#6fa877"];
-const ANIMATION_MS = 1900;
+const ANIMATION_MS = 3600;
 const FORMATION_MS = 260;
+const FLIGHT_ARC_HEIGHT_RATIO = 0.07;
+const FLIGHT_EXIT_DROP_RATIO = 0.035;
+const HORIZONTAL_FLIGHT_LAG = 0.2;
+const MAX_FLIGHT_TILT = Math.PI / 10;
 const PART_DELAYS: Record<ButterflyPart, number> = {
   antenna: 0,
   wing: 0.22,
@@ -247,16 +251,19 @@ export function DotMorphTitle({
     context.setTransform(scene.ratio, 0, 0, scene.ratio, 0, 0);
     context.clearRect(0, 0, scene.width, scene.height);
 
-    const flightX = fly * scene.width * 0.78;
-    const flightY = Math.sin(fly * Math.PI) * -scene.height * 0.035
-      + Math.sin(fly * Math.PI * 2) * scene.height * 0.008;
-    const flightScale = 1 + fly * 0.08;
-    const opacity = fly < 0.82 ? 1 : 1 - (fly - 0.82) / 0.18;
+    const horizontalProgress = fly - Math.sin(fly * Math.PI) * HORIZONTAL_FLIGHT_LAG;
+    const flightX = horizontalProgress * scene.width * 0.78;
+    const arcHeight = scene.height * FLIGHT_ARC_HEIGHT_RATIO;
+    const exitDrop = scene.height * FLIGHT_EXIT_DROP_RATIO;
+    const flightY = -Math.sin(fly * Math.PI) * arcHeight + fly * exitDrop;
+    const flightScale = 1 + fly * 0.03;
+    const opacity = fly < 0.9 ? 1 : 1 - (fly - 0.9) / 0.1;
     const wingPulse = 1 - Math.abs(Math.sin(fly * Math.PI * 5)) * 0.07;
-    const tangentX = scene.width * 0.78;
-    const tangentY = -Math.cos(fly * Math.PI) * Math.PI * scene.height * 0.035
-      + Math.cos(fly * Math.PI * 2) * Math.PI * 2 * scene.height * 0.008;
-    const flightTilt = Math.atan2(tangentY, tangentX)
+    const tangentX = scene.width * 0.78
+      * (1 - Math.cos(fly * Math.PI) * Math.PI * HORIZONTAL_FLIGHT_LAG);
+    const tangentY = -Math.cos(fly * Math.PI) * Math.PI * arcHeight + exitDrop;
+    const pathTilt = Math.atan2(tangentY, tangentX);
+    const flightTilt = Math.max(-MAX_FLIGHT_TILT, Math.min(MAX_FLIGHT_TILT, pathTilt))
       * easeOutCubic(clamp01(formation / 0.32));
     const rotationCosine = Math.cos(flightTilt);
     const rotationSine = Math.sin(flightTilt);
