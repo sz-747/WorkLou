@@ -8,7 +8,7 @@ import { getWaitingRows } from "../../../lib/a2/follow-ups";
 /** A2 / People — the caseworker's own list (136:279). Data: cases, contexts, notes and referrals. */
 export const dynamic = "force-dynamic";
 
-const COLUMNS = ["Client", "Focus", "Stage", "Last contact", "Next follow-up", "Attention"];
+const COLUMNS = ["Client", "Focus", "Stage", "Last contact", "Next follow-up"];
 const FILTERS = ["All", "Overdue", "Waiting on service"];
 
 export default async function MyClients() {
@@ -25,7 +25,7 @@ export default async function MyClients() {
       </header>
 
       <div className="a2s-btn-row" style={{ marginBottom: 16 }}>
-        <Link className="a2s-matte a2s-btn" href="/clients/new">
+        <Link className="a2s-matte a2s-btn" href="/clients/new" prefetch>
           Add New Person
         </Link>
       </div>
@@ -47,21 +47,16 @@ export default async function MyClients() {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id}>
+                  <tr className="a2s-client-row" key={row.id}>
                     <td className="is-name">
-                      <Link href={`/clients/${row.id}`}>{row.name}</Link>
+                      <Link className="a2s-client-link" href={`/clients/${row.id}`} prefetch>
+                        {row.name}
+                      </Link>
                     </td>
                     <td>{row.focus}</td>
                     <td>{row.stage}</td>
                     <td>{row.last}</td>
                     <td className={row.nextOverdue ? "is-overdue" : undefined}>{row.next}</td>
-                    <td>
-                      {row.attention === "–" ? (
-                        "–"
-                      ) : (
-                        <span className="a2s-count">{row.attention}</span>
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -79,7 +74,7 @@ export default async function MyClients() {
                   <li key={item.key}>
                     <span className="a2s-rail-top">
                       <span className="a2s-rail-name">{item.name}</span>
-                      <Link className="a2s-rail-meta" href="/follow-ups">
+                      <Link className="a2s-rail-meta" href={`/follow-ups/${item.caseId}`}>
                         Follow-ups
                       </Link>
                     </span>

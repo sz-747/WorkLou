@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 /** Sheet / … — white 40%, radius 20, hairline stroke, 32 background blur. */
@@ -7,15 +8,17 @@ export function Sheet({
   children,
   note,
   foot,
+  className,
 }: {
   title?: string;
   action?: ReactNode;
   children: ReactNode;
   note?: string;
   foot?: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="a2s-sheet">
+    <section className={["a2s-sheet", className].filter(Boolean).join(" ")}>
       {(title || action) && (
         <div className="a2s-sheet-head">
           {title && <h2>{title}</h2>}
@@ -35,11 +38,15 @@ export function Row({
   detail,
   meta,
   metaTone,
+  href,
+  actionLabel = "Open",
 }: {
   title: string;
   detail?: string;
   meta?: string;
   metaTone?: "muted" | "ink" | "overdue";
+  href?: string;
+  actionLabel?: string;
 }) {
   return (
     <li>
@@ -50,15 +57,22 @@ export function Row({
           {detail && <span className="a2s-row-detail">{detail}</span>}
         </span>
       </span>
-      {meta && (
-        <span
-          className={`a2s-row-meta${
-            metaTone === "overdue" ? " is-overdue" : metaTone === "ink" ? " is-ink" : ""
-          }`}
-        >
-          {meta}
-        </span>
-      )}
+      <span className="a2s-row-end">
+        {meta && (
+          <span
+            className={`a2s-row-meta${
+              metaTone === "overdue" ? " is-overdue" : metaTone === "ink" ? " is-ink" : ""
+            }`}
+          >
+            {meta}
+          </span>
+        )}
+        {href && (
+          <Link className="a2s-matte a2s-btn a2s-btn-sm" href={href}>
+            {actionLabel}
+          </Link>
+        )}
+      </span>
     </li>
   );
 }

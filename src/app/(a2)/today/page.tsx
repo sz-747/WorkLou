@@ -4,6 +4,7 @@ import { RailRow, Row, Sheet } from "../../../components/a2/Sheet";
 import { Empty } from "../../../components/a2/Empty";
 import { getTodayView } from "../../../lib/a2/today";
 import { getAccommodationAvailability } from "../../../lib/a2/capacity";
+import { getContributionsView } from "../../../lib/a2/contributions";
 
 /**
  * A2 / Today (136:139). Needs attention and follow-ups come from the casework
@@ -13,6 +14,7 @@ import { getAccommodationAvailability } from "../../../lib/a2/capacity";
 export const dynamic = "force-dynamic";
 
 export default async function Today() {
+  const contributions = getContributionsView();
   const [today, availability] = await Promise.all([
     getTodayView(),
     getAccommodationAvailability(),
@@ -20,9 +22,16 @@ export default async function Today() {
 
   return (
     <>
-      <header className="a2s-head">
-        <h1>Today at Lou&apos;s</h1>
-        <p className="a2s-sub">{today.subline}</p>
+      <header className="a2s-head a2s-today-head">
+        <div>
+          <h1>Today at Lou&apos;s</h1>
+          <p className="a2s-sub">{today.subline}</p>
+        </div>
+        <Link className="a2s-contribution-widget a2s-matte" href="/contributions">
+          <strong>{contributions.today}</strong>
+          <span>Women helped<small>Today</small></span>
+          <span>{contributions.thisMonth}<small>This month</small></span>
+        </Link>
       </header>
 
       <AskBar />
@@ -57,6 +66,8 @@ export default async function Today() {
                   detail={row.detail}
                   meta={row.meta}
                   metaTone={row.overdue ? "overdue" : "ink"}
+                  href={`/follow-ups/${row.caseId}`}
+                  actionLabel="View history"
                 />
               ))}
             </ul>

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { CASEWORKER, IDENTITY_MENU } from "../../lib/a2-mock";
 import type { AlertsView } from "../../lib/a2/alerts";
 import { AlertsMenu } from "./AlertsMenu";
@@ -30,21 +30,35 @@ export function Shell({
   overdueCount: number;
 }) {
   const pathname = usePathname() ?? "";
+  const router = useRouter();
+  const [visiblePathname, setVisiblePathname] = useState(pathname);
   const [open, setOpen] = useState<"alerts" | "identity" | null>(null);
   const [spotlight, setSpotlight] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisiblePathname(pathname);
+  }, [pathname]);
+
+  useEffect(() => {
+    NAV.forEach((item) => router.prefetch(item.href));
+    router.prefetch("/clients/new");
+    router.prefetch("/contributions");
+  }, [router]);
 
   return (
     <div className="a2s-shell">
       <Logo />
 
       <div className="a2s-nav a2s-matte" ref={navRef}>
-        <NavActiveLoop navRef={navRef} pathname={pathname} />
+        <NavActiveLoop navRef={navRef} pathname={visiblePathname} />
         {NAV.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            aria-current={pathname.startsWith(item.href) ? "page" : undefined}
+            prefetch
+            aria-current={visiblePathname.startsWith(item.href) ? "page" : undefined}
+            onClick={() => setVisiblePathname(item.href)}
           >
             {item.label}
             {item.href === "/follow-ups" && overdueCount > 0 && (
@@ -58,6 +72,11 @@ export function Shell({
           </Link>
         ))}
       </div>
+
+      <Link className="a2s-matte a2s-new-call" href="/clients/new" prefetch>
+        <span aria-hidden="true">+</span>
+        New call note
+      </Link>
 
       <div className="a2s-island a2s-matte">
         <button
@@ -93,9 +112,9 @@ export function Shell({
             <div className="a2s-pop" role="dialog" aria-label="Account">
               <p className="a2s-pop-line">{IDENTITY_MENU.line}</p>
               <ul>
-                {IDENTITY_MENU.items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
+                <li><Link href="/today" onClick={() => setOpen(null)}>My day</Link></li>
+                <li><Link href="/contributions" onClick={() => setOpen(null)}>Contributions</Link></li>
+                <li><Link href="/settings" onClick={() => setOpen(null)}>Settings</Link></li>
               </ul>
               <p className="a2s-pop-foot">{IDENTITY_MENU.logout}</p>
             </div>
