@@ -17,6 +17,69 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-06 - `/welcome` immediate butterfly formation
+- Branch: `welcome-landing`
+- Changes: shortened the complete click transition to 1.9 seconds and decoupled butterfly assembly from the overall flight. The title dots now finish forming the full antenna-led butterfly within the first 260 ms after `Help More Women Now` is clicked, then the fully formed butterfly performs the remaining rightward flight.
+- DB changes: none.
+- Tests run: `tsc --noEmit`; `npm run build`; frozen browser capture at 300 ms confirmed the complete butterfly is already visible and moving right; normal-speed click-through reached `/welcome/complete` with no browser page errors.
+- Result: pass locally at `http://localhost:3100/welcome`.
+- Known issues: `/welcome/complete` remains intentionally blank until it is connected to Today.
+- Next phase: user visual review; no merge or push performed.
+
+## 2026-09-06 - `/welcome` directed butterfly formation
+- Branch: `welcome-landing`
+- Changes: rebuilt the large particle butterfly around a fixed right-facing form rather than rotating an upright shape during assembly. Target points are now tagged as antenna, wing, front body, or rear body and form in that order while the title moves; spatial target sorting removes the former random diagonal crossings. The antennae extend beyond the wing tips and lead a mostly horizontal flight with only a small rise and wave. Formation completes during the first half of the animation before the butterfly accelerates off-screen. Tightened title-mask sampling so the capital `A` crossbar is retained. Reduced the CTA halo to low-opacity Lou's Place orange, white, pale blue, and green only.
+- DB changes: none.
+- Tests run: `tsc --noEmit`; `npm run build`; browser review of resting, early-formation, mid-formation, and formed-flight frames; normal-speed click-through to `/welcome/complete`; no framework overlay or browser page errors.
+- Result: pass locally at `http://localhost:3100/welcome`.
+- Known issues: `/welcome/complete` remains intentionally blank until it is connected to Today.
+- Next phase: user visual review; no merge or push performed.
+
+## 2026-09-06 - `/welcome` visual refinement pass
+- Branch: `welcome-landing`
+- Changes: replaced the opaque logo asset with a transparent-background PNG so it blends into the landing gradient; changed the CTA copy to `Help More Women Now`; loaded the dashboard's exact Instrument Sans font for that button; rebuilt the CTA as a milky glass control with a restrained cyan/green/violet/pink/orange outer glow. Revised all five background flight rotations so each butterfly's antennae point along its path, made the non-yellow butterflies drift upward as well, and corrected both aqua butterflies so they no longer appear upside down. The dotted title particles are larger and the formed butterfly now adds per-dot shadow, highlight, and near/far wing depth; its antennae are part of the particle mask and lead its rightward arc.
+- DB changes: none.
+- Tests run: `tsc --noEmit`; repeated final `npm run build`; desktop browser visual checks including a frozen real mid-animation frame; normal-speed browser click-through to `/welcome/complete`; no framework overlay or browser page errors.
+- Result: pass locally at `http://localhost:3100/welcome`.
+- Known issues: `/welcome/complete` remains intentionally blank for interaction testing. The transparent logo was produced with the built-in image editor from the supplied raster and stored as a separate project asset; the original opaque image remains available beside it.
+- Next phase: user visual review; no merge or push performed.
+
+## 2026-09-06 - `/welcome` Lou's Place logo and final copy
+- Branch: `welcome-landing`
+- Changes: added the supplied Lou's Place logo image to the top-left of the landing page, changed the dotted hero text from `Lou's Place` to `No More Admin`, and renamed the transition button from `No More` to `Proceed`. The existing dot-to-butterfly flight and blank test destination are unchanged. Replaced the particle title's estimated font sizing with actual canvas text measurement so the longer heading fits on desktop and mobile.
+- DB changes: none.
+- Tests run: `tsc --noEmit`; `npm run build`; automated browser checks at 1262x624 and 390x844; `Proceed` click-through to `/welcome/complete`; no framework overlay or browser page errors.
+- Result: pass locally at `http://localhost:3100/welcome`.
+- Known issues: `/welcome/complete` remains intentionally blank for interaction testing.
+- Next phase: user visual review; no merge or push performed.
+
+## 2026-09-06 - `/welcome` button-triggered flying morph
+- Branch: `welcome-landing`
+- Changes: corrected the landing interaction so the dotted `Lou's Place` title is no longer clickable. The only trigger is the `No More` button. On click, the title dots immediately travel right while simultaneously converging into the large butterfly shape; the animation no longer forms the butterfly in place before beginning the flight. After the butterfly exits, the page navigates to the new static blank test route at `/welcome/complete` instead of loading a database-backed screen.
+- DB changes: none.
+- Tests run: `tsc --noEmit`; `npm run build`; production server HTTP checks for `/welcome` and `/welcome/complete`; automated browser click-through verified the heading and only interactive button, the rightward butterfly state, completed navigation to `/welcome/complete`, and no Next.js error overlay or browser page errors.
+- Result: pass locally; final page available at `http://localhost:3100/welcome` without Docker or Postgres.
+- Known issues: `/welcome/complete` is intentionally blank for this interaction test and must be replaced with the chosen destination when the landing page is integrated.
+- Next phase: user visual review; no merge or push performed.
+
+## 2026-09-06 - `/welcome` dotted-title transition
+- Branch: `welcome-landing`
+- Changes: revised the landing prototype to the Lou's Place A2 light palette (warm white, orange, deep green, and pale green). The title is now rendered as hundreds of coloured canvas dots. Clicking it morphs those same dots into one large butterfly, gives the wings a light pulse as it flies off the right edge, and then opens the existing Home route (`/`). The separate "Know more" link to `/admin` and the smaller mural-inspired background butterflies remain. No new dependency was added.
+- DB changes: none.
+- Tests run: `npx tsc --noEmit`; `npm run build`; `/welcome` returned HTTP 200 from the production server; browser verification confirmed the dotted resting title, large butterfly formation, responsive layout, accessible title button, and completed navigation to `/`. The destination page itself requires Postgres, which was intentionally not started for this visual-only check.
+- Result: pass locally; revised page relaunched at `http://localhost:3100/welcome`.
+- Known issues: localhost can demonstrate the complete transition, but the destination Home screen cannot render without the existing Postgres runtime. Base44's active branch already contains its `/today` screen, so the final destination should be rechecked when this isolated feature is integrated.
+- Next phase: user visual review, then merge the isolated landing feature after Base44 pauses its active branch writes.
+
+## 2026-09-06 - `/welcome` landing-page prototype
+- Branch: `welcome-landing`
+- Changes: added a self-contained static landing page at `/welcome` with the title "Lou's Place," a "Know more" link to `/admin`, and five original SVG butterflies inspired by Deborah Mills's uplifting Lou's Place mural. The butterflies follow separate edge-weighted flight paths so they move down and up the page without crossing the central title. Styling is route-scoped, hides the existing caseworker navigation only on `/welcome`, adapts to mobile, and provides a still composition when reduced motion is requested. The existing project has no Tailwind or shadcn setup, so the supplied concept was implemented with CSS Modules and no new runtime dependencies rather than changing global styling.
+- DB changes: none.
+- Tests run: `npx tsc --noEmit`; `npm run build` (static `/welcome` route generated); production server returned 200; browser checks at 1262x624 and 390x844 confirmed the heading and CTA render, existing navigation is absent, no framework overlay or page errors appear, the CTA href is `/admin`, and reduced-motion mode reports no running flight animation.
+- Result: pass locally.
+- Known issues: the "Know more" label and `/admin` destination are an explicit working interpretation of the user's phrase "Knowmore admin" and remain subject to visual review. The branch is not merged into Base44's active `backend-skeleton-setup` branch or pushed.
+- Next phase: user visual review, then integrate after Base44 pauses its current branch writes.
+
 ## 2026-09-06: Admin interface removed
 - Branch: `codex/remove-admin`
 - Changes: deleted all `/admin` routes, server actions, service-editing code, the Admin navigation link, its dedicated database test, and stale Admin demo instructions. Moved the shared append-only change writer to `src/lib/service-history.ts` so updater, discovery, and spreadsheet code still work. Kept legacy `admin_corrected` database values for existing-data compatibility.
