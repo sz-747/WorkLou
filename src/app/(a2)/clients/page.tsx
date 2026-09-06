@@ -5,7 +5,7 @@ import { Empty } from "../../../components/a2/Empty";
 import { getClientRows } from "../../../lib/a2/clients";
 import { getWaitingRows } from "../../../lib/a2/follow-ups";
 
-/** A2 / My clients (136:279). Data: cases, contexts, notes and referrals. */
+/** A2 / People — the caseworker's own list (136:279). Data: cases, contexts, notes and referrals. */
 export const dynamic = "force-dynamic";
 
 const COLUMNS = ["Client", "Focus", "Stage", "Last contact", "Next follow-up", "Attention"];
@@ -18,7 +18,7 @@ export default async function MyClients() {
   return (
     <>
       <header className="a2s-head">
-        <h1>My clients</h1>
+        <h1>People</h1>
         <p className="a2s-sub">
           {rows.length} open · {overdue} overdue · {waiting.length} waiting on a service
         </p>

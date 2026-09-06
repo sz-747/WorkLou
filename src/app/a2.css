@@ -578,7 +578,11 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
 .a2s-btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
 
 /* ── Tables (My clients / Shelters) ──────────────────────────────────── */
-.a2s-table { border-collapse: collapse; width: 100%; }
+/* The global stylesheet puts a #ccc box border on every th/td; these tables are
+ * glass panels, so the only rule that stays is a soft horizontal hairline. */
+.a2s-table { background: transparent; border-collapse: collapse; width: 100%; }
+.a2s-table th,
+.a2s-table td { background: transparent; border: 0; }
 .a2s-table th {
   border-bottom: 1px solid var(--hairline);
   color: var(--muted);
@@ -589,6 +593,7 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
 }
 .a2s-table td {
   border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
   font-size: 14px;
   padding: 13px 12px 13px 0;
   vertical-align: middle;
