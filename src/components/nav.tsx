@@ -5,7 +5,12 @@ import { usePathname } from "next/navigation";
 
 /**
  * Shared shell. Caseworker routes (/ and /women…) get the scoped A2 pill
- * styling; /admin and /data keep the original globals.css appearance.
+ * styling; /admin keeps the original globals.css appearance.
+ *
+ * There is no caseworker- or manager-facing view of raw tables, provenance or
+ * scraper internals: /admin is the technical console only, and stays separate
+ * from any future manager dashboard (team workload, cases needing attention,
+ * overdue follow-ups, decisions a manager can act on).
  */
 /** Routes that render the A2 design shell and supply their own chrome. */
 const A2_ROUTES = [
@@ -38,7 +43,6 @@ export function Nav() {
       <details className="tools-menu">
         <summary>System tools</summary>
         <div>
-          <Link href="/data">Data check</Link>
           <Link href="/admin">Admin</Link>
         </div>
       </details>
