@@ -2,13 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Sheet } from "../../../../components/a2/Sheet";
 import { ClientBar } from "../../../../components/a2/ClientBar";
-import { CaseJourney } from "../../../../components/a2/CaseJourney";
+import { QuickExit } from "../../../../components/a2/QuickExit";
 import { Empty } from "../../../../components/a2/Empty";
 import { getClientProfile } from "../../../../lib/a2/clients";
 import { closeProfile } from "./actions";
 
 /**
- * A2 / Profile · <her name> (136:217), driven by real case data.
+ * A2 / Profile · <her name> (136:217) with quick exit (153:45), driven by real
+ * case data. She is named on screen; the case reference is only the data label.
+ * The plan sheet keeps this branch's ranked-referral workflow.
  */
 export const dynamic = "force-dynamic";
 
@@ -35,13 +37,27 @@ export default async function Profile({ params }: { params: Promise<{ id: string
               ))}
             </div>
           )}
+          <p className="a2s-dim" style={{ margin: "10px 0 0" }}>
+            Quick exit opens her escape plan in one click.
+          </p>
+        </div>
+        <div className="a2s-profile-actions">
+          <div className="a2s-btn-row">
+            <QuickExit />
+            <Link className="a2s-matte a2s-btn" href={`/clients/${profile.id}/workflow`}>
+              Casework stages
+            </Link>
+          </div>
+          <div className="a2s-btn-row">
+            <Link className="a2s-matte a2s-btn a2s-btn-sm" href={`/clients/${profile.id}/workflow`}>
+              New case note
+            </Link>
+            <Link className="a2s-matte a2s-btn a2s-btn-sm" href="/letters">
+              Support letter
+            </Link>
+          </div>
         </div>
       </div>
-
-      <CaseJourney
-        currentStage={profile.journey.currentStage}
-        statuses={profile.journey.statuses}
-      />
 
       <div className="a2s-grid">
         <div>
@@ -49,18 +65,16 @@ export default async function Profile({ params }: { params: Promise<{ id: string
             {profile.summary.body ? (
               <p className="a2s-body">{profile.summary.body}</p>
             ) : (
-              <Empty>No summary yet. Add call notes when creating the person.</Empty>
+              <Empty>No summary yet. Create one from her call notes in the casework stages.</Empty>
             )}
           </Sheet>
 
           <Sheet
             title="Recent contact"
             action={
-              profile.referrals.length > 0 ? (
-                <Link className="a2s-link" href={`/follow-ups/${profile.id}`}>
-                  Communication history
-                </Link>
-              ) : null
+              <Link className="a2s-link" href={`/clients/${profile.id}/workflow`}>
+                All contact notes
+              </Link>
             }
           >
             {profile.recentContact.length === 0 ? (
@@ -143,7 +157,12 @@ export default async function Profile({ params }: { params: Promise<{ id: string
                   ) : (
                     <>
                       <span className="a2s-rail-top">
-                        <span className="a2s-rail-name" style={{ fontSize: 15 }}>{file.name}</span>
+                        <span className="a2s-rail-name" style={{ fontSize: 15 }}>
+                          {file.name}
+                        </span>
+                        <Link className="a2s-rail-meta" href={`/clients/${profile.id}/workflow`}>
+                          Open
+                        </Link>
                       </span>
                       <span className="a2s-dim">{file.detail}</span>
                     </>
@@ -165,7 +184,7 @@ export default async function Profile({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      <ClientBar name={profile.name} />
+      <ClientBar name={profile.name} caseRef={profile.ref} />
     </>
   );
 }

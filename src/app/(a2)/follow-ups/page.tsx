@@ -1,10 +1,13 @@
-import Link from "next/link";
+import { Row, Sheet } from "../../../components/a2/Sheet";
 import { Empty } from "../../../components/a2/Empty";
 import { FollowUpProfiles } from "../../../components/a2/FollowUpProfiles";
-import { Sheet } from "../../../components/a2/Sheet";
 import { getFollowUpProfiles, getFollowUpRows } from "../../../lib/a2/follow-ups";
 
-/** Follow-ups is a searchable history of referral emails and recorded actions. */
+/**
+ * Follow-ups is the post-referral workspace. Its top section answers the
+ * immediate question — what needs contact now — while the profiles below hold
+ * each person's email and service-contact trail.
+ */
 export const dynamic = "force-dynamic";
 
 export default async function FollowUps() {
@@ -14,41 +17,26 @@ export default async function FollowUps() {
     <>
       <header className="a2s-head">
         <h1>Follow-ups</h1>
-        <p className="a2s-sub">
-          Referral emails, service replies and recorded actions for {profiles.length} people
-        </p>
+        <p className="a2s-sub">{due.length} need attention now · {profiles.length} people with outreach in progress</p>
       </header>
 
-      <div className="a2s-grid">
-        <Sheet title="Communication history" note="Filter using details stored with each person in Postgres.">
-          <FollowUpProfiles profiles={profiles} />
-        </Sheet>
+      <Sheet title="What you should be following up on right now" note="These are sent referrals due today or overdue.">
+        {due.length === 0 ? (
+          <Empty>Nothing needs follow-up right now.</Empty>
+        ) : (
+          <ul className="a2s-rows">
+            {due.map((row) => (
+              <Row key={row.key} title={row.name} detail={row.detail} meta={row.meta} metaTone={row.overdue ? "overdue" : "ink"} />
+            ))}
+          </ul>
+        )}
+      </Sheet>
 
-        <aside className="a2s-rail">
-          <Sheet title={`Due now · ${due.length}`}>
-            {due.length === 0 ? (
-              <Empty>Nothing needs follow-up right now.</Empty>
-            ) : (
-              <ul className="a2s-rail-rows">
-                {due.map((row) => (
-                  <li key={row.key}>
-                    <span className="a2s-rail-top">
-                      <span className="a2s-rail-name">{row.name}</span>
-                      <Link className="a2s-rail-meta" href={`/follow-ups/${row.caseId}`}>
-                        Open
-                      </Link>
-                    </span>
-                    <span className="a2s-rail-detail">{row.detail}</span>
-                    <span className={row.overdue ? "a2s-row-meta is-overdue" : "a2s-row-meta is-ink"}>
-                      {row.meta}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Sheet>
-        </aside>
-      </div>
+      <section className="a2s-followup-section">
+        <h2>People you&apos;re following up with</h2>
+        <p className="a2s-sub">See every service contacted, saved email, result and the next follow-up in one place.</p>
+        <FollowUpProfiles profiles={profiles} />
+      </section>
     </>
   );
 }

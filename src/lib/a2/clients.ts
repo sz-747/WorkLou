@@ -42,6 +42,8 @@ export type ClientRow = {
   last: string;
   next: string;
   nextOverdue: boolean;
+  /** How many of her open referrals are overdue — the People list badge. */
+  attention: string;
 };
 
 /** Latest context per case — approved wins over a newer draft. */
@@ -116,6 +118,9 @@ export async function getClientRows(now: Date = new Date()): Promise<ClientRow[]
       .map((r) => r.followUpDue)
       .filter((d): d is string => !!d)
       .sort()[0] ?? null;
+    const overdueCount = open.filter(
+      (r) => r.followUpDue && daysOverdue(r.followUpDue, now) > 0,
+    ).length;
     const lastNote = noteRows.find((n) => n.caseId === caseRow.id);
 
     return {
@@ -127,6 +132,7 @@ export async function getClientRows(now: Date = new Date()): Promise<ClientRow[]
       last: clientLastContactLabel(lastNote?.recordedAt ?? caseRow.createdAt, now),
       next: clientNextFollowUpLabel(nextDue, now),
       nextOverdue: !!nextDue && daysOverdue(nextDue, now) > 0,
+      attention: overdueCount > 0 ? String(overdueCount) : "–",
     };
   });
 }
