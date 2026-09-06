@@ -49,7 +49,7 @@ services:
         condition: service_healthy
       setup:
         condition: service_completed_successfully
-    command: sh -c "npx next dev -p 3000 -H 0.0.0.0"
+    command: sh -c "npm run dev"
 
   # Phase 7A: recurring existing-service updater. Hits the same idempotent
   # endpoint the Admin "Run updater now" button uses. (Base44's scheduler
