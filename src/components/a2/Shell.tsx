@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import { ALERTS, CASEWORKER, IDENTITY_MENU } from "../../lib/a2-mock";
 import { SearchGlyph } from "./glyphs";
+import { Logo } from "./Logo";
 import { NavActiveLoop } from "./NavActiveLoop";
-import { Scribble } from "./Scribble";
 import { Spotlight } from "./Spotlight";
 
 const NAV = [
@@ -27,11 +27,9 @@ export function Shell() {
 
   return (
     <div className="a2s-shell">
+      <Logo />
+
       <div className="a2s-nav a2s-matte" ref={navRef}>
-        <span className="a2s-logo" aria-label="Lou's Place">
-          <Scribble className="a2s-logo-scribble" strokeWidth={2.6} />
-          <span className="a2s-logo-text">Lou&apos;s</span>
-        </span>
         <NavActiveLoop navRef={navRef} pathname={pathname} />
         {NAV.map((item) => (
           <Link

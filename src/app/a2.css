@@ -149,16 +149,24 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
   position: relative;
 }
 .a2s-island { flex: 0 0 auto; }
+/* Standalone brand mark, outside the nav pill (components/a2/Logo). */
+.a2s-brand {
+  align-items: center;
+  color: var(--ink);
+  display: flex;
+  flex: 0 0 auto;
+  text-decoration: none;
+}
+.a2s-brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.a2s-brand-img { display: block; height: 44px; width: auto; }
 .a2s-logo {
   align-items: center;
   display: flex;
-  flex: 0 0 auto;
   font-size: 13px;
   font-weight: 600;
   height: 40px;
   justify-content: center;
   letter-spacing: -0.01em;
-  margin-right: 8px;
   width: 52px;
 }
 .a2s-nav a {
