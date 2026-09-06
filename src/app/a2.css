@@ -139,13 +139,18 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
   justify-content: space-between;
   margin-bottom: 36px;
 }
+/* The pill fills the room between logo and island, so the five tabs spread
+ * across it instead of huddling left with a slab of empty white after them.
+ * Gaps, padding and label size all flex with the viewport so the row stays
+ * even from tablet up to wide desktop. */
 .a2s-nav {
   align-items: center;
   display: flex;
   flex: 1 1 auto;
-  gap: 4px;
+  gap: clamp(2px, 0.6vw, 10px);
   height: 64px;
-  padding: 0 12px;
+  justify-content: space-between;
+  padding: 0 clamp(8px, 1.2vw, 18px);
   position: relative;
 }
 .a2s-island { flex: 0 0 auto; }
@@ -175,9 +180,9 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
   border-radius: var(--pill);
   white-space: nowrap;
   color: var(--ink);
-  font-size: 15px;
+  font-size: clamp(13.5px, 1.35vw, 15px);
   font-weight: 500;
-  padding: 9px 14px;
+  padding: 9px clamp(8px, 1.1vw, 16px);
   text-decoration: none;
   transition: background-color 120ms ease, transform 120ms ease;
 }
