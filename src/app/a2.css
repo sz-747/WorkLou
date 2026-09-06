@@ -145,11 +145,10 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
   gap: 4px;
   height: 64px;
   padding: 0 12px;
+  position: relative;
 }
 .a2s-logo {
   align-items: center;
-  border: 1.5px solid var(--accent);
-  border-radius: 50% 45% 50% 45%;
   display: flex;
   flex: 0 0 auto;
   font-size: 13px;
@@ -172,7 +171,52 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
 .a2s-nav a:hover { background: rgb(255 255 255 / 45%); transform: translateY(-2px); }
 .a2s-nav a:active { background: rgb(255 255 255 / 20%); transform: none; }
 .a2s-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.a2s-nav a[aria-current="page"] { background: rgb(255 255 255 / 70%); }
+/* ── Hand-drawn scribble: logo loop + travelling active-tab loop ──────────
+ * Both loops are the same open crayon circle (components/a2/Scribble). The
+ * logo's is fixed; the tab loop is positioned over whichever link the router
+ * marked current and springs across to the next one, wobbling as it settles.
+ * prefers-reduced-motion switches both to an instant move.
+ */
+.a2s-logo { position: relative; }
+.a2s-logo-text { position: relative; z-index: 1; }
+.a2s-logo-scribble {
+  height: 132%;
+  left: -12%;
+  pointer-events: none;
+  position: absolute;
+  top: -16%;
+  width: 124%;
+}
+.a2s-nav a[aria-current="page"] { background: transparent; }
+.a2s-nav-loop {
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transition:
+    left 620ms cubic-bezier(0.32, 1.5, 0.46, 1),
+    width 620ms cubic-bezier(0.32, 1.5, 0.46, 1),
+    top 300ms ease,
+    height 300ms ease;
+  z-index: 0;
+}
+.a2s-nav-loop-ink {
+  animation: a2s-loop-settle 620ms cubic-bezier(0.36, 1.4, 0.5, 1);
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+.a2s-nav-loop-ink svg { display: block; height: 100%; width: 100%; overflow: visible; }
+@keyframes a2s-loop-settle {
+  0% { transform: rotate(-2.2deg) scale(0.94); }
+  45% { transform: rotate(1.6deg) scale(1.04); }
+  72% { transform: rotate(-0.9deg) scale(0.99); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .a2s-nav-loop { transition: none; }
+  .a2s-nav-loop-ink { animation: none; }
+}
 
 .a2s-island { align-items: center; display: flex; gap: 8px; height: 64px; padding: 0 10px; }
 .a2s-island-btn {

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ALERTS, CASEWORKER, IDENTITY_MENU } from "../../lib/a2-mock";
 import { SearchGlyph } from "./glyphs";
+import { NavActiveLoop } from "./NavActiveLoop";
+import { Scribble } from "./Scribble";
 import { Spotlight } from "./Spotlight";
 
 const NAV = [
@@ -22,13 +24,16 @@ export function Shell() {
   const pathname = usePathname() ?? "";
   const [open, setOpen] = useState<"alerts" | "identity" | null>(null);
   const [spotlight, setSpotlight] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="a2s-shell">
-      <div className="a2s-nav a2s-matte">
+      <div className="a2s-nav a2s-matte" ref={navRef}>
         <span className="a2s-logo" aria-label="Lou's Place">
-          Lou&apos;s
+          <Scribble className="a2s-logo-scribble" strokeWidth={2.6} />
+          <span className="a2s-logo-text">Lou&apos;s</span>
         </span>
+        <NavActiveLoop navRef={navRef} pathname={pathname} />
         {NAV.map((item) => (
           <Link
             key={item.href}
