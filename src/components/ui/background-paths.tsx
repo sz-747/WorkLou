@@ -103,7 +103,13 @@ const FLIGHTS = [
   { route: styles.routeFive, palette: PALETTES.aqua },
 ];
 
-export function BackgroundPaths({ title = "No More Admin" }: { title?: string }) {
+export function BackgroundPaths({
+  title = "No More Admin",
+  stats = [],
+}: {
+  title?: string;
+  stats?: { value: number; label: string }[];
+}) {
   return (
     <main className={`${styles.welcomePage} ${instrumentSans.variable}`}>
       <Image
@@ -127,6 +133,15 @@ export function BackgroundPaths({ title = "No More Admin" }: { title?: string })
 
       <div className={styles.hero}>
         <DotMorphTitle destination="/today" title={title} />
+        {stats.length > 0 && (
+          <p className={styles.stats}>
+            {stats.map((stat) => (
+              <span className={styles.stat} key={stat.label}>
+                <strong>{stat.value}</strong> {stat.label}
+              </span>
+            ))}
+          </p>
+        )}
       </div>
     </main>
   );
