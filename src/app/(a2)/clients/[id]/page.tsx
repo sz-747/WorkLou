@@ -41,8 +41,8 @@ export default async function Profile({ params }: { params: Promise<{ id: string
 
       <div className="a2s-btn-row" style={{ marginBottom: 8 }}>
         <QuickExit />
-        <Link className="a2s-matte a2s-btn" href={`/women/${profile.id}`}>
-          Open casework file
+        <Link className="a2s-matte a2s-btn" href={`/clients/${profile.id}/workflow`}>
+          Casework stages
         </Link>
         <Link className="a2s-matte a2s-btn a2s-btn-sm" href="/letters">
           Letters

@@ -315,6 +315,70 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
   text-underline-offset: 3px;
 }
 
+/* ── Casework stages (five-stage workflow in the sheet recipe) ───────── */
+.a2s-stage > summary::-webkit-details-marker { display: none; }
+.a2s-stage > summary { cursor: pointer; list-style: none; }
+.a2s-stage-head { align-items: center; display: flex; gap: 14px; justify-content: space-between; }
+.a2s-stage-number {
+  align-items: center;
+  border: 1.5px solid rgb(11 15 20 / 25%);
+  border-radius: 50%;
+  color: var(--muted);
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 600;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+.a2s-stage[open] > summary .a2s-stage-number { background: var(--ink); border-color: var(--ink); color: #fff; }
+.a2s-stage-text { display: grid; gap: 3px; margin-right: auto; min-width: 0; }
+.a2s-stage-body { border-top: 1px solid var(--hairline); margin-top: 16px; padding-top: 16px; }
+.a2s-stage-body h3,
+.a2s-stage-body h4 { font-size: 15px; font-weight: 500; margin: 12px 0 6px; }
+.a2s-stage-body p { font-size: 14px; }
+.a2s-stage-body .muted,
+.a2s-stage-body .action-note { color: var(--muted); font-size: 13px; }
+.a2s-stage-body button {
+  background: var(--ink);
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 16px;
+}
+.a2s-stage-body input,
+.a2s-stage-body select,
+.a2s-stage-body textarea {
+  background: rgb(255 255 255 / 60%);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+}
+.a2s-stage-body .support-card,
+.a2s-stage-body .review-panel {
+  background: rgb(255 255 255 / 45%);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg, 16px);
+  margin: 12px 0;
+  padding: 14px 16px;
+}
+.a2s-stage-body .technical-details { font-size: 13px; margin: 8px 0; }
+.a2s-stage-body .technical-details > summary { color: var(--muted); cursor: pointer; }
+.a2s-stage-body .pill {
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 2px 10px;
+}
+.a2s-stage-body .error-message { color: var(--accent); font-size: 14px; }
+.a2s-stage-divider { border: 0; border-top: 1px solid var(--hairline); margin: 20px 0; }
+
 /* Two-column Today grid: 840 + 320 with a 40px gutter */
 .a2s-grid { align-items: start; display: grid; gap: 40px; grid-template-columns: minmax(0, 840fr) minmax(0, 320fr); }
 .a2s-rail { display: grid; gap: 16px; }
