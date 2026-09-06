@@ -45,11 +45,9 @@ Quiet case navigation:
 Verification is a sub-step of Find support.
 
 ## Visual direction
-The product should feel integrated into Lou's Place: calm, warm, professional, trustworthy, practical, accessible and mature.
+Current direction (2026-09-06): preserve the existing glossy UI and align its layout, hierarchy and interactions with the Figma Claude page. Use Instrument Sans, translucent rounded surfaces, warm/cool pale gradients and clear orange focus/status cues. Keep primary and secondary actions distinguishable, readable contrast and reduced-motion support.
 
-Use restrained forest/olive greens, warm off-white surfaces, neutral text, clear hierarchy and familiar administrative patterns.
-
-Avoid purple gradients, neon AI styling, glassmorphism, excessive rounded cards, decorative charts, chat-first UI, unnecessary animation, childish visuals and generic vibe-coded SaaS styling.
+This supersedes the earlier forest/olive palette and prohibition on glassmorphism. The casework, evidence and cognitive-load principles in this document still apply. See the [Claude UI/UX audit](audits/figma-claude-ui-review.md) for frame coverage, functional gaps and decisions pending user review.
 
 ## Screen hierarchy
 Every case screen should make these obvious:

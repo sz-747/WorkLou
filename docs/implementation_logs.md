@@ -17,6 +17,16 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-06 — Figma Claude UI/UX audit
+- Branch: `codex/figma-claude-review`; isolated worktree created from latest fetched main and fast-forwarded to local preview `f97d2b6`.
+- Changes: reviewed all 17 Claude frames via Figma metadata, individual design context and screenshots; captured nested section/text/style inventory; wrote prioritized source-backed UI/UX audit and manual review steps. Updated visual direction to preserve the user-requested glossy style. No application code changes.
+- Environment: renewed Figma OAuth and set local startup/tool timeouts to 90/180 seconds. Resource discovery, metadata and all 17 frame requests then succeeded. Credentials/config are not committed.
+- DB changes: none.
+- Tests run: parsed captured XML/JSON and checked frame coverage; Git whitespace check; browser spot checks of Today and People; compared current component/page source against reference states. No application suite rerun for documentation-only changes.
+- Result: audit ready for user review; not a pixel-perfect or exhaustive interaction certification.
+- Known issues: wrong-case mock quick exit; mock/inert search and task actions; disconnected filters/context links; plan/file routing; layout and state differences. See `docs/audits/figma-claude-ui-review.md` for evidence and scope.
+- Next phase: incorporate user's examples and agreed priorities, then implement on this separate branch. Local preview remains available; no production deployment or merge.
+
 ## 2026-09-06 — Current glossy UI local preview
 - Branch: `codex/local-preview`, created from latest main then fast-forwarded to `backend-skeleton-setup` at `cb89593` (which includes `figma-ui-implementation`). Main and those shared feature branches are unchanged.
 - Changes: local startup/setup scripts with a dedicated persistent Postgres database and loopback-only web server; ignored local data/log directory; local review instructions. Fixed the current branch's build failure by returning `sentAt` from `getDueFollowUps`, as required by the latest Follow-ups view model. No visual restyling.

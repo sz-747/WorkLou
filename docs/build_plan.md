@@ -45,6 +45,10 @@ One phase per workflow step. Each phase gets its own branch from latest `main`, 
 
 Branch `codex/local-preview` integrates the latest existing glossy UI (`backend-skeleton-setup` through `cb89593`) for local review. Persistent local Postgres and `npm run local` are configured; Base44 publication is deferred. One missing `sentAt` query field was fixed so the latest Follow-ups UI builds. See `docs/local-preview.md` for startup and review steps. Figma refinement belongs on a separate subsequent branch after this review.
 
+## Figma Claude alignment review — IN PROGRESS (2026-09-06)
+
+Branch `codex/figma-claude-review` uses an isolated worktree, created from fetched main and fast-forwarded to the current local-preview baseline. All 17 Claude frames were inspected through Figma MCP and compared with source; Today and People received browser spot checks. The [audit](audits/figma-claude-ui-review.md) records functional gaps, section-by-section layout differences, state coverage and design decisions. Audit documentation is ready; UI implementation and user acceptance remain pending. Preserve the existing glossy style, use local previews, and do not deploy or merge this review automatically.
+
 ## Phase rules
 
 - Per `AGENTS.md`: start from latest main, read all four docs, work only the requested phase, do not start the next phase.
