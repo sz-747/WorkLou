@@ -17,7 +17,7 @@ export function Logo() {
   const [imageOk, setImageOk] = useState(true);
 
   return (
-    <Link href="/today" className="a2s-brand" aria-label="Lou's Place — home">
+    <Link href="/welcome" className="a2s-brand" aria-label="Lou's Place — home">
       {imageOk ? (
         // eslint-disable-next-line @next/next/no-img-element -- unknown intrinsic size until the screenshot lands
         <img
