@@ -12,5 +12,5 @@ export default function WelcomePage() {
     { value: "175,000+", label: "women helped" },
   ];
 
-  return <BackgroundPaths title="No More Admin" stats={stats} />;
+  return <BackgroundPaths autoStart title="No More Admin" stats={stats} />;
 }

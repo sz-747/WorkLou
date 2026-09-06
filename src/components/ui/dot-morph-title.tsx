@@ -18,6 +18,7 @@ type Particle = Point & {
 const TITLE_COLORS = ["#214c3f", "#2f6f55", "#c2410c", "#6fa877"];
 const ANIMATION_MS = 3600;
 const FORMATION_MS = 260;
+const AUTO_START_DELAY_MS = 2400;
 const FLIGHT_ARC_HEIGHT_RATIO = 0.07;
 const FLIGHT_EXIT_DROP_RATIO = 0.035;
 const HORIZONTAL_FLIGHT_LAG = 0.2;
@@ -226,9 +227,11 @@ function buildParticles(
 }
 
 export function DotMorphTitle({
+  autoStart = false,
   destination,
   title,
 }: {
+  autoStart?: boolean;
   destination: string;
   title: string;
 }) {
@@ -329,6 +332,13 @@ export function DotMorphTitle({
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
     };
   }, [rebuild]);
+
+  useEffect(() => {
+    if (!autoStart || !ready) return;
+    const timer = window.setTimeout(() => activate(), AUTO_START_DELAY_MS);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activate is stable for this effect's lifetime
+  }, [autoStart, ready]);
 
   function activate() {
     if (animatingRef.current) return;

@@ -104,9 +104,11 @@ const FLIGHTS = [
 ];
 
 export function BackgroundPaths({
+  autoStart = false,
   title = "No More Admin",
   stats = [],
 }: {
+  autoStart?: boolean;
   title?: string;
   stats?: { value: string | number; label: string }[];
 }) {
@@ -132,7 +134,7 @@ export function BackgroundPaths({
       </div>
 
       <div className={styles.hero}>
-        <DotMorphTitle destination="/today" title={title} />
+        <DotMorphTitle autoStart={autoStart} destination="/today" title={title} />
         {stats.length > 0 && (
           <p className={styles.stats}>
             {stats.map((stat) => (
