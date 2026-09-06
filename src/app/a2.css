@@ -158,7 +158,9 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
   text-decoration: none;
 }
 .a2s-brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-.a2s-brand-img { display: block; height: 44px; width: auto; }
+/* The supplied PNG has an opaque white backdrop; multiply drops it into the
+ * page gradient so the scribble mark reads as a standalone logo. */
+.a2s-brand-img { display: block; height: 56px; mix-blend-mode: multiply; width: auto; }
 .a2s-logo {
   align-items: center;
   display: flex;
