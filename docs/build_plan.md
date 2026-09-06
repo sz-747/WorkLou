@@ -41,6 +41,10 @@ One phase per workflow step. Each phase gets its own branch from latest `main`, 
 5. **Outcome analytics**: referral outcomes accumulate — surface "which services actually deliver support" in Find support.
 6. **Case-list ergonomics**: multiple concurrent cases, search, and closed-case handling.
 
+## Branch delivery follow-up — IN PROGRESS (2026-09-06)
+
+Branch `codex/branch-production-workflow` adds branch-push/PR checks and a standalone production Docker runtime. Production hosting selection, deployment configuration, and live verification are pending. See `docs/branch-production-workflow.md`. This work concerns Git collaborators; no application accounts or roles are added.
+
 ## Phase rules
 
 - Per `AGENTS.md`: start from latest main, read all four docs, work only the requested phase, do not start the next phase.

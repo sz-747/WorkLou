@@ -1,0 +1,57 @@
+name: Branch checks
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lou
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: worklou_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lou -d worklou_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://lou:ci_only@localhost:5432/worklou_test
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Initialize disposable test database
+        run: |
+          npm run db:push
+          npm run db:seed
+      - name: Run database suites sequentially
+        run: npm run test:db:all
+      - run: npm run build
+      - name: Build production image
+        run: docker build -t worklou-ci .
+      - name: Verify production HTTP routes
+        run: |
+          docker run -d --name worklou-ci --network host -e DATABASE_URL worklou-ci
+          trap 'docker logs worklou-ci; docker stop worklou-ci' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 http://localhost:3000/ > /dev/null
+          for route in women admin data api/services/export; do
+            curl --fail --silent --show-error "http://localhost:3000/$route" > /dev/null
+          done

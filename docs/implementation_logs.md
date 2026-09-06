@@ -17,6 +17,15 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-06 — Branch checks and production runtime
+- Branch: `codex/branch-production-workflow`, from latest main `e8e924f`.
+- Changes: GitHub Actions checks for branch pushes and pull requests, isolated Postgres 16 service, sequential suite runner, production build and container HTTP smoke checks; standalone Next.js Docker runtime with non-root execution and environment-file exclusion; collaboration/deployment handoff documentation.
+- DB changes: none to application schema. Verification used a new disposable local Postgres database with synthetic seed data.
+- Tests run: all 12 database suites sequentially, 276 assertions passed; production build passed; standalone runtime returned HTTP 200 for My Work, Women, the seeded case, Admin, Data check, CSV export, and a generated CSS asset; `git diff --check` passed. Local Docker execution is unavailable; image build and container smoke checks are included in GitHub Actions.
+- Result: local verification passed. Production host selection, runtime secrets, and deployment/live verification remain pending; this is not a completed production deployment.
+- Known issues: no hosting destination supplied, no existing GitHub deployment recorded. Existing synthetic-demo/no-application-auth boundary remains. Native Base44 schedules remain inactive.
+- Next phase: configure the selected host for this branch, verify GitHub checks and the deployed commit, and open the production URL. Manual steps: `docs/branch-production-workflow.md`.
+
 ## 2026-09-06 — Base44 native scheduler bridge prepared
 - Branch: `project-status-overview`
 - Changes: added two thin Base44/Deno wrapper functions (`runWorkLouUpdater`, `runWorkLouDiscovery`) with inactive daily automation definitions, shared runtime code, and a Base44 handoff prompt. The wrappers call the existing Next routes so Postgres remains canonical and the business logic is not duplicated. Both machine-triggered routes now fail closed behind `SCHEDULER_SECRET`; the bounded discovery schedule uses `limit=1`. Local compose sidecars send the same bearer token with a development-only default.
