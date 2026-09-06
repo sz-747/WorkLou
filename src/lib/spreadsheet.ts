@@ -17,7 +17,7 @@ import {
   spreadsheetImports,
   stagedServices,
 } from "../db/schema";
-import { logServiceChange } from "./admin";
+import { logServiceChange } from "./service-history";
 import { NEEDS_TAXONOMY } from "./extraction";
 
 /** Fields a spreadsheet column can map to (name is required, handled separately). */

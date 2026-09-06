@@ -1,8 +1,7 @@
 /**
  * Phase 7A — updater HTTP entry point. POSTing this route runs the
  * existing-service updater once; used by the compose cron sidecar for the
- * recurring schedule and by the Admin "Run updater now" button path is the
- * same underlying function. Idempotent: repeated runs create no duplicate
+ * recurring schedule and by manual API calls. Idempotent: repeated runs create no duplicate
  * candidates.
  */
 import { runUpdater } from "../../../../lib/updater";

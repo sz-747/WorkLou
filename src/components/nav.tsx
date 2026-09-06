@@ -11,7 +11,6 @@ export function Nav() {
         <summary>System tools</summary>
         <div>
           <Link href="/data">Data check</Link>
-          <Link href="/admin">Admin</Link>
         </div>
       </details>
     </nav>

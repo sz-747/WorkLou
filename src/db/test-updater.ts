@@ -262,7 +262,7 @@ async function main() {
   const visaCand = (await pendingFor("attribute", "visa"))[0];
   const formatCand = (await pendingFor("attribute", "format"))[0];
 
-  const appliedPhone = await applyUpdateCandidate(phoneCand.id, "Lou (admin)");
+  const appliedPhone = await applyUpdateCandidate(phoneCand.id, "Lou (reviewer)");
   const [svcApproved] = await db.select().from(services).where(eq(services.id, testService.id));
   const phoneLog = await db
     .select()
@@ -271,7 +271,7 @@ async function main() {
   assert(
     "approved service-field change applied + logged old → new with who",
     appliedPhone?.status === "applied" &&
-      appliedPhone?.decidedBy === "Lou (admin)" &&
+      appliedPhone?.decidedBy === "Lou (reviewer)" &&
       svcApproved.phone === "02 9999 8888" &&
       phoneLog.length === 1 &&
       phoneLog[0].oldValue === "02 0000 0000" &&
@@ -279,7 +279,7 @@ async function main() {
       !!appliedPhone?.decidedAt,
   );
 
-  const appliedWait = await applyUpdateCandidate(waitCand.id, "Lou (admin)");
+  const appliedWait = await applyUpdateCandidate(waitCand.id, "Lou (reviewer)");
   const [waitFactApplied] = await db.select().from(serviceAttributes).where(eq(serviceAttributes.id, waitFact.id));
   const waitLog = await db
     .select()
@@ -298,7 +298,7 @@ async function main() {
       waitLog[0].newValue === "3-5 weeks",
   );
 
-  const appliedVisa = await applyUpdateCandidate(visaCand.id, "Lou (admin)");
+  const appliedVisa = await applyUpdateCandidate(visaCand.id, "Lou (reviewer)");
   const visaRows = await db
     .select()
     .from(serviceAttributes)
@@ -314,24 +314,24 @@ async function main() {
 
   assert(
     "approve on an already-decided candidate is rejected safely",
-    (await applyUpdateCandidate(visaCand.id, "Lou (admin)")) === null,
+    (await applyUpdateCandidate(visaCand.id, "Lou (reviewer)")) === null,
   );
 
   // ---------- reject: canonical untouched ----------
   console.log("[REJECT] rejected candidates leave canonical data untouched");
 
-  const rejected = await rejectUpdateCandidate(formatCand.id, "Lou (admin)", "page is out of date — delivery still phone/online");
+  const rejected = await rejectUpdateCandidate(formatCand.id, "Lou (reviewer)", "page is out of date — delivery still phone/online");
   const [formatAfterReject] = await db.select().from(serviceAttributes).where(eq(serviceAttributes.id, deliveryFact.id));
   assert(
     "rejection recorded with who/when; fact value unchanged",
     rejected?.status === "rejected" &&
-      rejected?.decidedBy === "Lou (admin)" &&
+      rejected?.decidedBy === "Lou (reviewer)" &&
       formatAfterReject.value === "phone_online" &&
       formatAfterReject.verificationStatus === "verified_machine",
   );
   assert(
     "reject on an already-decided candidate is rejected safely",
-    (await rejectUpdateCandidate(formatCand.id, "Lou (admin)", null)) === null,
+    (await rejectUpdateCandidate(formatCand.id, "Lou (reviewer)", null)) === null,
   );
 
   // ---------- source failure: no corruption ----------

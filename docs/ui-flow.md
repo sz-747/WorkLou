@@ -175,29 +175,6 @@ Primary action: **Approve note**
 
 ---
 
-# Admin / service-knowledge flow
-
-Keep this separate from frontline casework.
-
-## Services
-Admin can inspect:
-- canonical service details
-- eligibility
-- sources/provenance
-- freshness
-- machine-verified vs provider-confirmed facts
-- change history
-
-## Update review
-Show candidate changes found by the existing-service updater. Admin can approve/reject uncertain or high-impact changes.
-
-## Discovery review
-Show new-service candidates found through Bright Data-backed discovery. Admin can inspect provenance, deduplication and approve/reject before canonical insertion.
-
-The admin experience should also remain operational rather than analytics-heavy.
-
----
-
 # Backend-to-UI relationship
 
 The backend can be complex:

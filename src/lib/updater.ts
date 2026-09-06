@@ -7,11 +7,12 @@
  *
  * Per build_plan Phase 7 ("nothing auto-applied without review"):
  *  - unchanged values only refresh freshness (retrieved_at, source, and
- *    stale → verified_machine); provider-confirmed / admin-corrected
+ *    stale → verified_machine); provider-confirmed / legacy
+ *    admin-corrected
  *    facts keep their human status;
  *  - every value change (and every new fact) becomes a pending update
- *    candidate for admin review — nothing touches canonical data until
- *    an admin approves it (applyUpdateCandidate), which also writes the
+ *    candidate for human review — nothing touches canonical data until
+ *    a reviewer approves it (applyUpdateCandidate), which also writes the
  *    append-only change log. Rejections and failed sources never touch
  *    canonical data. Missing facts are never invented — a candidate only
  *    exists because the source reported it.
@@ -23,7 +24,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db";
 import { serviceAttributes, services, updateCandidates, updaterRuns } from "../db/schema";
-import { logServiceChange } from "./admin";
+import { logServiceChange } from "./service-history";
 import { fetchSnapshot, type SourceSnapshot } from "./sources";
 
 export type RunTrigger = "manual" | "scheduled";
@@ -140,7 +141,7 @@ export function planForFact(
     currentValue: stored.value,
     newValue: fact.value,
     reason: isHumanConfirmed(stored.verificationStatus)
-      ? `value changed on the source page; stored value was human-confirmed (${stored.verificationStatus}) — admin review required`
+      ? `value changed on the source page; stored value was human-confirmed (${stored.verificationStatus}) — human review required`
       : "value changed on the source page",
   };
 }
@@ -368,7 +369,7 @@ export async function runUpdater({ trigger, only }: { trigger: RunTrigger; only?
   }
 }
 
-/** Pending + decided candidates for the admin review section, newest first. */
+/** Pending and decided review candidates, newest first. */
 export async function getUpdateCandidates() {
   const pending = await db
     .select({ candidate: updateCandidates, serviceName: services.name })
@@ -398,7 +399,7 @@ export async function getUpdaterRuns(limit = 10) {
 }
 
 /**
- * Admin approves a candidate: apply to canonical data in place (with the
+ * A reviewer approves a candidate: apply to canonical data in place (with the
  * candidate's machine provenance + freshness), write the append-only
  * change log, mark the candidate applied. Returns null for non-pending or
  * unknown candidates.
@@ -490,7 +491,7 @@ export async function applyUpdateCandidate(candidateId: string, decidedBy: strin
   return updated;
 }
 
-/** Admin rejects a candidate: canonical data untouched, rejection recorded with who/when. */
+/** A reviewer rejects a candidate: canonical data untouched, rejection recorded with who/when. */
 export async function rejectUpdateCandidate(candidateId: string, decidedBy: string, reason: string | null) {
   const [c] = await db.select().from(updateCandidates).where(eq(updateCandidates.id, candidateId));
   if (!c || c.status !== "pending_review") return null;

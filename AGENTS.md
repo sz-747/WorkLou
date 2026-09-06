@@ -30,8 +30,8 @@ These rules apply to every new branch/session on this repository. Follow them ex
 - Fresh seed: `docker compose -f docker-compose.base44.yml exec -T web npm run db:seed` (skips if already seeded)
 - Direct DB: `docker compose -f docker-compose.base44.yml exec db psql -U lou -d lousplace`; Postgres is also exposed on host port 5432 (dev-only creds: lou / lou_dev_only, db lousplace)
 - `drizzle-kit push` (not generate/migrate) keeps the DB in sync — schema source of truth is `src/db/schema.ts`
-- Updater (Phase 7A): run on demand with `curl -X POST "http://localhost:3000/api/updater/run?trigger=manual"` (or the Admin button); an hourly `updater-cron` compose sidecar calls the same endpoint with `trigger=scheduled`. Runs are idempotent — safe to trigger repeatedly.
-- Discovery (Phase 7B pipeline): `curl -X POST "http://localhost:3000/api/discovery/run"` (or the Admin button) — SERP → provider pages → review queue, never merges into canonical data; idempotent.
+- Updater (Phase 7A): run on demand with `curl -X POST "http://localhost:3000/api/updater/run?trigger=manual"`; an hourly `updater-cron` compose sidecar calls the same endpoint with `trigger=scheduled`. Runs are idempotent — safe to trigger repeatedly.
+- Discovery (Phase 7B pipeline): `curl -X POST "http://localhost:3000/api/discovery/run"` — SERP → provider pages → review queue, never merges into canonical data; idempotent.
 - Bright Data adapter (`src/lib/brightdata.ts`, SERP API over `api.brightdata.com/request`): needs `BRIGHT_DATA_API_KEY`, `BRIGHT_DATA_SERP_ZONE` env (optional; fixtures/direct sources work without them). There is NO `BRIGHT_DATA_DATASET_ID` dependency and NO Web Unlocker fallback in the demo environment — provider pages that block direct fetching are recorded as source failures. Adapter tests run offline with stubbed HTTP (`npm run db:test:brightdata`).
 - Source-of-truth docs live in `docs/` — read all four before any work (see Session start rules)
 

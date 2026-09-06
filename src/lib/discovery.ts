@@ -25,7 +25,7 @@
 import { eq, isNotNull } from "drizzle-orm";
 import { db } from "../db";
 import { discoveryCandidates, serviceAttributes, services } from "../db/schema";
-import { logServiceChange } from "./admin";
+import { logServiceChange } from "./service-history";
 import { serpSearch, type SerpResult } from "./brightdata";
 import { fetchSnapshot, type SourceSnapshot } from "./sources";
 import type { SourceFact } from "./source-facts";
