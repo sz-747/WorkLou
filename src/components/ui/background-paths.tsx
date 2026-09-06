@@ -108,7 +108,7 @@ export function BackgroundPaths({
   stats = [],
 }: {
   title?: string;
-  stats?: { value: number; label: string }[];
+  stats?: { value: string | number; label: string }[];
 }) {
   return (
     <main className={`${styles.welcomePage} ${instrumentSans.variable}`}>
