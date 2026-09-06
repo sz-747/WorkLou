@@ -1,11 +1,10 @@
 /**
  * Today view model — a roll-up of the real casework tables. "Needs attention"
  * is overdue follow-ups plus cases still waiting on an approved context;
- * follow-ups and letters reuse their own view models.
+ * follow-ups reuse their own view model.
  */
 import { getClientRows } from "./clients";
 import { getFollowUpRows, type FollowUpRow } from "./follow-ups";
-import { getLetterRows, type LetterRow } from "./letters";
 import { joinParts } from "./format";
 
 export type AttentionRow = {
@@ -20,14 +19,12 @@ export type TodayView = {
   subline: string;
   needsAttention: AttentionRow[];
   followUps: FollowUpRow[];
-  letters: LetterRow[];
 };
 
 export async function getTodayView(now: Date = new Date()): Promise<TodayView> {
-  const [clients, followUps, letters] = await Promise.all([
+  const [clients, followUps] = await Promise.all([
     getClientRows(now),
     getFollowUpRows(now),
-    getLetterRows(now),
   ]);
 
   const needsAttention: AttentionRow[] = clients
@@ -56,6 +53,5 @@ export async function getTodayView(now: Date = new Date()): Promise<TodayView> {
     ]),
     needsAttention,
     followUps,
-    letters,
   };
 }

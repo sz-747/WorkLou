@@ -466,6 +466,23 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
   padding: 22px 28px;
 }
 .a2s-sheet + .a2s-sheet { margin-top: 16px; }
+/* Follow-up hub: person-level outreach history stays scannable in stacked glass cards. */
+.a2s-followup-section { margin-top: 32px; }
+.a2s-followup-section > h2 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+.a2s-followup-section > .a2s-sub { margin: 0 0 16px; }
+.a2s-followup-profiles { display: grid; gap: 16px; margin-top: 16px; }
+.a2s-followup-profile { padding: 20px 24px; }
+.a2s-followup-profile .a2s-sheet-head { margin-bottom: 12px; }
+.a2s-followup-profile .a2s-sheet-head h2 { margin: 0; }
+.a2s-followup-profile .a2s-dim { margin: 3px 0 0; }
+.a2s-followup-chips { margin-bottom: 14px; }
+.a2s-followup-history { border-top: 1px solid var(--hairline); }
+.a2s-followup-referral { border-bottom: 1px solid var(--hairline); padding: 12px 0; }
+.a2s-followup-referral:last-child { border-bottom: 0; padding-bottom: 0; }
+.a2s-followup-referral strong { font-size: 15px; font-weight: 500; }
+.a2s-followup-referral p { font-size: 14px; line-height: 1.45; margin: 6px 0 0; }
+.a2s-followup-referral p + p { margin-top: 3px; }
+
 .a2s-sheet-head {
   align-items: baseline;
   display: flex;

@@ -6,8 +6,8 @@ import { getTodayView } from "../../../lib/a2/today";
 import { getAccommodationAvailability } from "../../../lib/a2/capacity";
 
 /**
- * A2 / Today (136:139). Needs attention, follow-ups and letters come from the
- * casework tables. Accommodation availability shows only provider-confirmed
+ * A2 / Today (136:139). Needs attention and follow-ups come from the casework
+ * tables. Accommodation availability shows only provider-confirmed
  * capacity — the service import carries wait times, never bed counts.
  */
 export const dynamic = "force-dynamic";
@@ -90,29 +90,7 @@ export default async function Today() {
             )}
           </Sheet>
 
-          <Sheet
-            title={`Letters · ${today.letters.length}`}
-            foot={
-              <Link className="a2s-link" href="/letters">
-                All letters
-              </Link>
-            }
-          >
-            {today.letters.length === 0 ? (
-              <Empty>No letters yet.</Empty>
-            ) : (
-              <ul className="a2s-rail-rows">
-                {today.letters.slice(0, 4).map((letter) => (
-                  <RailRow
-                    key={letter.key}
-                    name={letter.name}
-                    meta={letter.meta}
-                    detail={letter.detail}
-                  />
-                ))}
-              </ul>
-            )}
-          </Sheet>
+
         </div>
       </div>
     </>
