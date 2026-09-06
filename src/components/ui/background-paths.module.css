@@ -1,0 +1,387 @@
+.welcomePage {
+  align-items: center;
+  background:
+    radial-gradient(circle at 8% 88%, rgb(194 65 12 / 18%), transparent 31%),
+    radial-gradient(circle at 88% 12%, rgb(155 207 159 / 48%), transparent 34%),
+    radial-gradient(circle at 76% 84%, rgb(47 111 85 / 13%), transparent 30%),
+    linear-gradient(145deg, #fffefa 0%, #f7f7ef 52%, #edf6e9 100%);
+  box-sizing: border-box;
+  display: flex;
+  isolation: isolate;
+  justify-content: center;
+  min-height: 100svh;
+  overflow: hidden;
+  padding: 2rem;
+  position: relative;
+  width: 100%;
+}
+
+:global(body):has(.welcomePage) {
+  background: #f7f7ef;
+  margin: 0;
+  max-width: none;
+  overflow: hidden;
+  padding: 0;
+}
+
+:global(body):has(.welcomePage) > :global(.main-nav) {
+  display: none;
+}
+
+.logo {
+  height: auto;
+  left: clamp(1rem, 3vw, 2rem);
+  position: absolute;
+  top: clamp(1rem, 3vw, 2rem);
+  width: clamp(8rem, 14vw, 11rem);
+  z-index: 4;
+}
+
+.sky {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.sky::before {
+  background:
+    linear-gradient(118deg, transparent 48%, rgb(255 255 255 / 62%) 72%, transparent 92%),
+    radial-gradient(circle at 22% 18%, rgb(194 65 12 / 8%), transparent 20%);
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.flight {
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  top: 0;
+  width: clamp(4.5rem, 9vw, 8.5rem);
+  will-change: transform;
+}
+
+.float {
+  animation: gentleBob 2.4s ease-in-out infinite alternate;
+}
+
+.butterflyArt {
+  display: block;
+  filter: drop-shadow(0 9px 8px rgb(33 76 63 / 14%));
+  height: auto;
+  overflow: visible;
+  width: 100%;
+}
+
+.wing {
+  animation: flutter 680ms ease-in-out infinite alternate;
+  transform-box: fill-box;
+}
+
+.leftWing {
+  transform-origin: right center;
+}
+
+.rightWing {
+  animation-delay: -170ms;
+  transform-origin: left center;
+}
+
+.routeOne {
+  animation: routeOne 24s linear -7s infinite;
+}
+
+.routeTwo {
+  animation: routeTwo 21s linear -15s infinite;
+  width: clamp(3.6rem, 7vw, 6.8rem);
+}
+
+.routeThree {
+  animation: routeThree 27s linear -3s infinite;
+  width: clamp(3.8rem, 7.5vw, 7.2rem);
+}
+
+.routeFour {
+  animation: routeFour 25s linear -18s infinite;
+  width: clamp(4rem, 8vw, 7.8rem);
+}
+
+.routeFive {
+  animation: routeFive 29s linear -11s infinite;
+  width: clamp(3.2rem, 6vw, 6rem);
+}
+
+.hero {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  max-width: 68rem;
+  position: relative;
+  text-align: center;
+  z-index: 2;
+}
+
+.hero::before {
+  background: rgb(255 254 250 / 74%);
+  border-radius: 50%;
+  content: "";
+  filter: blur(34px);
+  height: 118%;
+  inset: -9% -8%;
+  position: absolute;
+  z-index: -1;
+}
+
+.title {
+  height: clamp(7.5rem, 20vw, 13.5rem);
+  margin: 0 0 clamp(2rem, 5vw, 3.5rem);
+  width: min(88vw, 60rem);
+}
+
+.dotTitleAnchor {
+  align-items: center;
+  color: #214c3f;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  z-index: 4;
+}
+
+.dottedTitleFallback {
+  background: radial-gradient(circle, #2f6f55 0 2px, transparent 2.5px) 0 0 / 8px 8px;
+  background-clip: text;
+  color: transparent;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.25rem, 9vw, 8rem);
+  font-weight: 600;
+  letter-spacing: -0.065em;
+  line-height: 0.92;
+  transition: opacity 180ms ease;
+  white-space: nowrap;
+  -webkit-background-clip: text;
+}
+
+.dotTitleReady .dottedTitleFallback {
+  opacity: 0;
+}
+
+.dotCanvas {
+  height: 100vh;
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  width: 100vw;
+  z-index: 3;
+}
+
+.cta {
+  align-items: center;
+  appearance: none;
+  -webkit-backdrop-filter: blur(28px) saturate(130%);
+  backdrop-filter: blur(28px) saturate(130%);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 82%) 0%, rgb(255 255 255 / 54%) 52%, rgb(169 190 208 / 22%) 100%),
+    radial-gradient(120% 90% at 50% 108%, rgb(168 197 186 / 34%) 0%, rgb(168 197 186 / 0%) 62%);
+  border: 1px solid rgb(255 255 255 / 76%);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1.5px 0.5px rgb(255 255 255 / 95%),
+    inset 0 -2px 3px rgb(51 71 75 / 12%),
+    inset 1px 0 2px rgb(169 190 208 / 35%),
+    inset -1px 0 2px rgb(168 197 186 / 35%),
+    0 2px 3px rgb(51 71 75 / 7%),
+    -12px 8px 25px rgb(111 168 119 / 16%),
+    0 14px 27px rgb(120 194 221 / 18%),
+    12px 7px 24px rgb(224 112 54 / 14%),
+    0 -5px 18px rgb(255 255 255 / 60%),
+    0 16px 34px rgb(51 71 75 / 12%);
+  color: #33474b;
+  display: inline-flex;
+  font-family: var(--font-instrument-sans), Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  font-weight: 600;
+  gap: 0.85rem;
+  isolation: isolate;
+  justify-content: center;
+  min-height: 4rem;
+  overflow: visible;
+  padding: 0 2rem;
+  position: relative;
+  text-decoration: none;
+  transition: box-shadow 160ms ease, transform 160ms ease, background-color 160ms ease;
+  white-space: nowrap;
+}
+
+.cta::before {
+  background: linear-gradient(180deg, rgb(255 255 255 / 72%), rgb(255 255 255 / 0%));
+  border-radius: 999px;
+  content: "";
+  height: 48%;
+  inset: 1px 8% auto;
+  pointer-events: none;
+  position: absolute;
+}
+
+.cta::after {
+  background: conic-gradient(
+    from 205deg,
+    #6fa877,
+    #bfe3f5,
+    #fff,
+    #e47736,
+    #fff,
+    #6fa877
+  );
+  border-radius: inherit;
+  content: "";
+  filter: blur(5px);
+  inset: -3px;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0.56;
+  padding: 3px;
+  pointer-events: none;
+  position: absolute;
+  transition: filter 160ms ease, opacity 160ms ease;
+  z-index: 0;
+}
+
+.cta > span {
+  position: relative;
+  z-index: 1;
+}
+
+.cta:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.cta:not(:disabled):hover {
+  background-color: rgb(255 255 255 / 68%);
+  box-shadow:
+    inset 0 2px 0.5px #fff,
+    inset 0 -2px 3px rgb(51 71 75 / 10%),
+    inset 1px 0 2px rgb(169 190 208 / 30%),
+    inset -1px 0 2px rgb(168 197 186 / 30%),
+    0 3px 4px rgb(51 71 75 / 7%),
+    -15px 10px 30px rgb(111 168 119 / 22%),
+    0 18px 34px rgb(120 194 221 / 24%),
+    15px 9px 30px rgb(224 112 54 / 20%),
+    0 -7px 22px rgb(255 255 255 / 72%),
+    0 22px 42px rgb(51 71 75 / 14%);
+  transform: translateY(-2px);
+}
+
+.cta:not(:disabled):hover::after {
+  filter: blur(6px);
+  opacity: 0.72;
+}
+
+.cta:not(:disabled):active {
+  box-shadow:
+    inset 0 1px 0.5px rgb(255 255 255 / 70%),
+    inset 0 3px 6px rgb(51 71 75 / 16%),
+    0 3px 9px rgb(51 71 75 / 10%);
+  transform: translateY(1px);
+}
+
+.cta:focus-visible {
+  outline: 3px solid #c2410c;
+  outline-offset: 5px;
+}
+
+.arrow {
+  display: inline-block;
+  font-size: 1.35em;
+  transition: transform 220ms ease;
+}
+
+.cta:not(:disabled):hover .arrow {
+  transform: translateX(4px);
+}
+
+@keyframes flutter {
+  from { transform: scaleX(0.58) rotate(-4deg); }
+  to { transform: scaleX(1) rotate(3deg); }
+}
+
+@keyframes gentleBob {
+  from { transform: translateY(-5px) rotate(-3deg); }
+  to { transform: translateY(7px) rotate(4deg); }
+}
+
+@keyframes routeOne {
+  0% { opacity: 0; transform: translate3d(-14vw, 82vh, 0) rotate(24deg) scale(0.78); }
+  8% { opacity: 0.9; }
+  30% { opacity: 0.9; transform: translate3d(12vw, 24vh, 0) rotate(60deg) scale(0.88); }
+  55% { opacity: 0.82; transform: translate3d(54vw, 8vh, 0) rotate(82deg) scale(1); }
+  82% { opacity: 0.78; transform: translate3d(91vw, 3vh, 0) rotate(72deg) scale(0.86); }
+  100% { opacity: 0; transform: translate3d(112vw, -12vh, 0) rotate(54deg) scale(0.72); }
+}
+
+@keyframes routeTwo {
+  0% { opacity: 0; transform: translate3d(108vw, 90vh, 0) rotate(-23deg); }
+  10% { opacity: 0.84; }
+  44% { opacity: 0.88; transform: translate3d(88vw, 43vh, 0) rotate(-16deg); }
+  74% { opacity: 0.8; transform: translate3d(78vw, 9vh, 0) rotate(14deg); }
+  100% { opacity: 0; transform: translate3d(104vw, -18vh, 0) rotate(44deg); }
+}
+
+@keyframes routeThree {
+  0% { opacity: 0; transform: translate3d(16vw, 110vh, 0) rotate(-13deg) scale(0.7); }
+  11% { opacity: 0.85; }
+  45% { opacity: 0.88; transform: translate3d(5vw, 63vh, 0) rotate(1deg) scale(0.92); }
+  74% { opacity: 0.8; transform: translate3d(16vw, 23vh, 0) rotate(-5deg) scale(0.84); }
+  100% { opacity: 0; transform: translate3d(-5vw, -19vh, 0) rotate(-26deg) scale(0.66); }
+}
+
+@keyframes routeFour {
+  0% { opacity: 0; transform: translate3d(-18vw, 91vh, 0) rotate(72deg) scale(0.7); }
+  10% { opacity: 0.78; }
+  35% { opacity: 0.82; transform: translate3d(22vw, 78vh, 0) rotate(73deg) scale(0.92); }
+  68% { opacity: 0.84; transform: translate3d(66vw, 66vh, 0) rotate(72deg) scale(0.86); }
+  100% { opacity: 0; transform: translate3d(112vw, 48vh, 0) rotate(69deg) scale(0.7); }
+}
+
+@keyframes routeFive {
+  0% { opacity: 0; transform: translate3d(29vw, 112vh, 0) rotate(-29deg) scale(0.62); }
+  12% { opacity: 0.72; }
+  47% { opacity: 0.8; transform: translate3d(5vw, 69vh, 0) rotate(-12deg) scale(0.8); }
+  74% { opacity: 0.76; transform: translate3d(8vw, 24vh, 0) rotate(11deg) scale(0.9); }
+  100% { opacity: 0; transform: translate3d(24vw, -18vh, 0) rotate(21deg) scale(0.66); }
+}
+
+@media (max-width: 700px) {
+  .welcomePage { padding: 1.25rem; }
+  .title { height: clamp(7rem, 36vw, 10rem); width: 94vw; }
+  .dottedTitleFallback { font-size: clamp(3.4rem, 18vw, 6rem); }
+  .flight { width: clamp(3.8rem, 18vw, 6.4rem); }
+  .routeTwo, .routeThree, .routeFour, .routeFive { width: clamp(3rem, 14vw, 5.2rem); }
+  .hero::before { inset: -14% -4%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flight {
+    animation: none;
+    opacity: 0.58;
+  }
+
+  .routeOne { transform: translate3d(5vw, 8vh, 0) rotate(-8deg); }
+  .routeTwo { transform: translate3d(83vw, 14vh, 0) rotate(22deg); }
+  .routeThree { transform: translate3d(8vw, 72vh, 0) rotate(-14deg); }
+  .routeFour { transform: translate3d(78vw, 76vh, 0) rotate(9deg); }
+  .routeFive { display: none; }
+  .float, .wing { animation: none; }
+  .dottedTitleFallback { transition: none; }
+  .cta { transition: none; }
+}

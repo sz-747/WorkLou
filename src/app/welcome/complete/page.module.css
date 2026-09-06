@@ -1,0 +1,16 @@
+.blankPage {
+  background: #fffefa;
+  min-height: 100svh;
+  width: 100%;
+}
+
+:global(body):has(.blankPage) {
+  background: #fffefa;
+  margin: 0;
+  max-width: none;
+  padding: 0;
+}
+
+:global(body):has(.blankPage) > :global(.main-nav) {
+  display: none;
+}
