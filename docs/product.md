@@ -60,9 +60,9 @@ As caseworkers use the tool, the service database accumulates verified, fresh, p
 ## Status
 
 - **Complete**: all phases built and verified — see `docs/build_plan.md` (all phases COMPLETE, plus known limitations and recommended next steps).
-- **How to run the demo**: `docs/demo_walkthrough.md` (caseworker five-step flow on the synthetic case, plus admin demo paths).
+- **How to run the demo**: `docs/demo_walkthrough.md` (caseworker five-step flow on the synthetic case).
 - **Schema + workflow detail**: `docs/implementation_plan.md`.
 
 ## Known limitations (hackathon build)
 
-No caseworker sign-in or roles yet; minimal (functional) UX; synthetic demo data; updater runs on fixture snapshots for seeded services (direct-fetch only otherwise — blocked provider pages log as source failures); discovery hits the live web and queues for human review; the protected Base44 scheduling wrappers are prepared but must still be deployed and activated in Base44; nothing is ever transmitted to providers; matching taxonomy needs alignment with Lou's actual service list before real data entry. See `docs/build_plan.md` for the full list and recommended next steps.
+No caseworker sign-in or roles yet; minimal (functional) UX; synthetic demo data; no service-maintenance interface; updater runs on fixture snapshots for seeded services (direct-fetch only otherwise); discovery hits the live web and queues candidates, but those candidates cannot be reviewed in the app; the protected Base44 scheduling wrappers are prepared but must still be deployed and activated in Base44; nothing is ever transmitted to providers; matching taxonomy needs alignment with Lou's actual service list before real data entry. See `docs/build_plan.md` for the full list and recommended next steps.

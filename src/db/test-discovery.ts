@@ -147,7 +147,7 @@ async function main() {
   console.log("[REVIEW] approve merges into canonical; reject leaves canonical untouched");
 
   const [cand] = stillQueued.filter((c) => c.sourceUrl === newUrl);
-  const approved = await approveDiscoveryCandidate(cand.id, "Lou (admin)");
+  const approved = await approveDiscoveryCandidate(cand.id, "Lou (reviewer)");
   assert(
     "approval creates the canonical service with extracted fields + discovery provenance",
     approved?.name === "New Provider Community Service" &&
@@ -174,7 +174,7 @@ async function main() {
   const [mergedCand] = await db.select().from(discoveryCandidates).where(sql`${discoveryCandidates.id} = ${cand.id}`);
   assert(
     "candidate marked merged with who/when",
-    mergedCand.status === "merged" && mergedCand.decidedBy === "Lou (admin)" && mergedCand.decidedAt !== null,
+    mergedCand.status === "merged" && mergedCand.decidedBy === "Lou (reviewer)" && mergedCand.decidedAt !== null,
   );
   assert(
     "deciding an already-decided candidate is rejected safely",
@@ -183,7 +183,7 @@ async function main() {
   const history = await db.select().from(serviceChangeLog).where(sql`${serviceChangeLog.serviceId} = ${approved!.id}`);
   assert(
     "append-only change log records the discovery approval",
-    history.length === 1 && history[0].field === "created" && history[0].changedBy.includes("Lou (admin)"),
+    history.length === 1 && history[0].field === "created" && history[0].changedBy.includes("Lou (reviewer)"),
   );
 
   const rejectUrl = "https://rejectme.example.org/";
@@ -203,12 +203,12 @@ async function main() {
   const [rejectCand] = await db.select().from(discoveryCandidates).where(sql`${discoveryCandidates.sourceUrl} = ${rejectUrl}`);
   const svcPre = (await db.select({ c: sql<number>`count(*)::int` }).from(services))[0].c;
   const attrPre = (await db.select({ c: sql<number>`count(*)::int` }).from(serviceAttributes))[0].c;
-  const rejected = await rejectDiscoveryCandidate(rejectCand.id, "Lou (admin)");
+  const rejected = await rejectDiscoveryCandidate(rejectCand.id, "Lou (reviewer)");
   const svcPost = (await db.select({ c: sql<number>`count(*)::int` }).from(services))[0].c;
   const attrPost = (await db.select({ c: sql<number>`count(*)::int` }).from(serviceAttributes))[0].c;
   assert(
     "rejection records the decision, canonical data untouched",
-    rejected?.status === "rejected" && rejected?.decidedBy === "Lou (admin)" && svcPost === svcPre && attrPost === attrPre,
+    rejected?.status === "rejected" && rejected?.decidedBy === "Lou (reviewer)" && svcPost === svcPre && attrPost === attrPre,
   );
 
   // ---------- idempotency with decided candidates ----------

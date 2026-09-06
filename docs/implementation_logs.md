@@ -17,6 +17,15 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-06: Admin interface removed
+- Branch: `codex/remove-admin`
+- Changes: deleted all `/admin` routes, server actions, service-editing code, the Admin navigation link, its dedicated database test, and stale Admin demo instructions. Moved the shared append-only change writer to `src/lib/service-history.ts` so updater, discovery, and spreadsheet code still work. Kept legacy `admin_corrected` database values for existing-data compatibility.
+- DB changes: none.
+- Tests run: production build passed; all 11 remaining database suites passed sequentially with 260 checks; live HTTP checks returned 200 for `/`, `/women`, and `/data`, and 404 for `/admin` and `/admin/services/example`.
+- Result: pass. The Admin interface and route tree are absent while the caseworker app and background service-data routes still build.
+- Known issues: updater and discovery can still queue candidates, but there is no in-app review/apply screen. Spreadsheet import/review also has no app screen; CSV export remains available.
+- Next phase: merge this isolated removal before bringing the in-progress dashboard branch up to date with `main`.
+
 ## 2026-09-06 — Base44 native scheduler bridge prepared
 - Branch: `project-status-overview`
 - Changes: added two thin Base44/Deno wrapper functions (`runWorkLouUpdater`, `runWorkLouDiscovery`) with inactive daily automation definitions, shared runtime code, and a Base44 handoff prompt. The wrappers call the existing Next routes so Postgres remains canonical and the business logic is not duplicated. Both machine-triggered routes now fail closed behind `SCHEDULER_SECRET`; the bounded discovery schedule uses `limit=1`. Local compose sidecars send the same bearer token with a development-only default.

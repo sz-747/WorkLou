@@ -51,9 +51,9 @@ services:
         condition: service_completed_successfully
     command: sh -c "npx next dev -p 3000 -H 0.0.0.0"
 
-  # Phase 7A: recurring existing-service updater. Hits the same idempotent
-  # endpoint the Admin "Run updater now" button uses. (Base44's scheduler
-  # can target this same URL when the app is published; this sidecar keeps
+  # Phase 7A: recurring existing-service updater. Hits the idempotent HTTP
+  # endpoint used by manual runs. (Base44's scheduler can target the same
+  # URL when the app is published; this sidecar keeps
   # the recurrence working in the dev environment.)
   updater-cron:
     image: alpine:3.20
@@ -66,8 +66,8 @@ services:
         sleep 3600;
       done"
 
-  # recurring new-service discovery (Phase 7B) — hits the same HTTP endpoint
-  # the manual admin button uses; Base44's scheduler can target it once published
+  # recurring new-service discovery (Phase 7B); Base44's scheduler can target
+  # the same HTTP endpoint once published
   discovery-cron:
     image: alpine:3.20
     depends_on:

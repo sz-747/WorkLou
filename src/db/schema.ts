@@ -106,8 +106,8 @@ export const serviceAttributes = pgTable(
 );
 
 /**
- * Append-only change history for service knowledge (Phase 7 admin view).
- * Every admin correction of a service field or a structured fact writes a
+ * Append-only change history for service knowledge.
+ * Every reviewed change to a service field or structured fact writes a
  * row here — nothing is ever deleted, so prior values and prior provenance
  * remain inspectable after a fact row is corrected in place.
  */
@@ -168,7 +168,7 @@ export const updaterRuns = pgTable(
  * Phase 7A — structured update candidates. A proposed change to canonical
  * service data, with full provenance (source URL, evidence type, retrieval
  * time). Nothing is auto-applied (build plan: "nothing auto-applied without
- * review"): admin approval applies it (canonical rows updated in place +
+ * review"): reviewer approval applies it (canonical rows updated in place +
  * change log), rejection leaves canonical data untouched. At most one
  * pending candidate per service+scope+key (idempotent re-runs update it in
  * place with the latest evidence rather than duplicating).

@@ -97,32 +97,6 @@ transmitted to a provider by the tool — drafts are for the worker to review an
 | `referral_events` | 3: provider_response, follow_up_draft, outcome |
 | `case_documents` | 1 approved case note |
 
-## Admin demo paths (verify after the case flow)
-
-All on **Admin** (`/admin`). None of these touch the demo case's data.
-
-1. **Service corrections** — open a service (e.g. Watershed), correct a fact with your
-   name. The change applies in place, is append-only in `service_change_log`, and
-   the caseworker Find-support results reflect it immediately (same shared rows).
-2. **Updater** — click **Run updater now** (or `curl -X POST
-   "http://localhost:3000/api/updater/run?trigger=manual"`). Fixture-backed seeded
-   sources refresh freshness in place (stale → verified_machine); any value change
-   becomes a pending update candidate for human review. Idempotent — rerunning
-   creates nothing new (2026-09-06 live run: 7 checked, 3 sources ok, 0 failed,
-   9 refreshes).
-3. **Discovery** — click **Run discovery now** (or `curl -X POST
-   "http://localhost:3000/api/discovery/run"`). SERP → candidate queue, deduped
-   against known services and previous candidates. Idempotent (2026-09-06 live
-   run: 20 results, 1 new candidate, 14 skipped as known/queued, 5 source
-   failures logged — never canonical). Approve a pending candidate to create the
-   canonical service from its evidence, or reject it.
-4. **Excel migration** — upload the demo CSV (`docs/synthetic-lou-service-list.csv`)
-   → rows stage verbatim with match status → import/discard per row. Importing a
-   matched row only fills empty fields (never overwrites); a new row creates a
-   service with `excel_import` provenance and needs flagged for provider
-   confirmation. Decided rows never re-decide. **Export** canonical services back
-   to CSV via `GET /api/services/export`.
-
 ## Re-running the demo from scratch
 
 1. Reset the case's workflow data (keeps the case, notes and all service knowledge):
