@@ -17,6 +17,11 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-06 — Connected welcome landing to dashboard
+
+- Changes: brought the animated `/welcome` experience and its Lou's Place assets from the `welcome-landing` branch into the active dashboard branch. The completed dot-to-butterfly transition now opens `/today` directly instead of ending on the blank `/welcome/complete` route. The old global navigation was not restored.
+- Verification: `npx tsc --noEmit` and `git diff --check` passed; live `/welcome` and `/today` requests both returned HTTP 200 with the expected landing and dashboard content.
+
 ## 2026-09-06 — Contribution medals and legacy navigation removal
 
 - Changes: enlarged every contribution square from 12px to 16px; replaced native gray scrollbars with thin peach-orange tracks and thumbs; added a four-medal achievement gallery using the local Lou's Place logo and dimensional orange/blue treatments. Badge titles use black for contrast; badges tilt on hover and flip on click to show the earned date. Removed the old global My Work, Women and System tools navigation from the root layout and deleted its unused component so it cannot appear above any route.
