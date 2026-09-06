@@ -49,23 +49,6 @@ export const FOLLOW_UPS_DUE: AttentionRow[] = [
   },
 ];
 
-export const SHELTER_BEDS = [
-  { name: "Harbour House", beds: "1 bed", detail: "called 09:10" },
-  { name: "Bridgewell", beds: "0 beds", detail: "emailed yesterday" },
-  {
-    name: "Cedar Family Support",
-    beds: "unknown",
-    detail: "last confirmed 12 days ago",
-    unknown: true,
-  },
-  {
-    name: "Elsie Refuge",
-    beds: "2 beds",
-    detail: "women + children only · called 08:50",
-  },
-];
-
-export const SHELTER_BEDS_NOTE = "Capacity is what they told us, when they told us.";
 
 export const LETTERS_TO_WRITE = [
   {
@@ -109,7 +92,7 @@ export const ALERTS = {
   items: [
     "Overdue · Maya's housing follow-up · 09:00",
     "Reply · Link2Home answered Jasmine's referral · 09:12",
-    "Bed · Harbour House has 1 bed until 4 pm · 09:10",
+    "Capacity · Harbour House capacity unknown — call to confirm · Demo status.",
   ],
   markAll: "Mark all read",
 };
@@ -144,14 +127,14 @@ export const LONG_ASK = {
 /* ── Spotlight (A2 / Spotlight) ──────────────────────────────────────── */
 
 export const SPOTLIGHT = {
-  query: "beds",
+  query: "accommodation",
   groups: [
     {
       label: "Shelters",
       items: [
-        { title: "Shelter beds today", detail: "4 shelters confirmed this morning" },
-        { title: "Harbour House", detail: "1 bed · called 09:10" },
-        { title: "Elsie Refuge", detail: "2 beds · women + children only" },
+        { title: "Accommodation availability", detail: "Demo status. Capacity is not tracked" },
+        { title: "Harbour House", detail: "Current capacity unknown — call to confirm" },
+        { title: "Elsie Refuge", detail: "women + children only · capacity unknown" },
       ],
     },
     {
@@ -284,7 +267,7 @@ export const DONE = {
       walk: "walk to the station",
       name: "Cedar Family Support",
       area: "Leichhardt",
-      facts: ["Two bedrooms free", "Pet policy: waiting on a call"],
+      facts: ["Capacity unknown — call to confirm", "Pet policy: waiting on a call"],
       link: "Shelter details",
     },
   ],
@@ -384,7 +367,7 @@ export const MY_CLIENTS = {
     },
     {
       name: "Amara Okafor",
-      focus: "Nil-income bed",
+      focus: "Nil income accommodation",
       stage: "Searching · 4 shelters asked",
       last: "today",
       next: "today",
@@ -653,24 +636,23 @@ export const PLAN = {
 /* ── Shelters (A2 / Shelters, A2 / Shelters · ask) ───────────────────── */
 
 export const SHELTERS = {
-  title: "Shelters and crisis beds",
+  title: "Accommodation and crisis services",
   subline: "14 services · 9 confirmed this week · for Maya: 3 eligible",
   filters: [
     "Inner West",
     "Women only",
     "Women + children",
     "Pets",
-    "Nil-income beds",
+    "Nil income accepted",
     "No curfew",
     "Mixed",
   ],
-  columns: ["Shelter", "Area", "Takes", "Beds (how, when)", "For Maya"],
+  columns: ["Shelter", "Area", "Takes", "Availability (how, when)", "For Maya"],
   rows: [
     {
       name: "Harbour House",
       area: "Marrickville",
       takes: "women, pets, curfew 11 pm",
-      beds: "1 · called 09:10",
       forMaya: "Eligible",
       eligible: true,
     },
@@ -678,57 +660,50 @@ export const SHELTERS = {
       name: "Bridgewell",
       area: "Ashfield",
       takes: "women + children, pets on file",
-      beds: "0 · emailed yesterday",
-      forMaya: "Eligible, no bed",
+      forMaya: "Eligible",
       eligible: true,
     },
     {
       name: "Cedar Family Support",
       area: "Leichhardt",
       takes: "women + children",
-      beds: "unknown · 12 days",
       forMaya: "Waiting on a call",
     },
     {
       name: "Elsie Refuge",
       area: "Glebe",
       takes: "women + children only",
-      beds: "2 · called 08:50",
       forMaya: "Not eligible · no children",
     },
     {
       name: "Rosa House",
       area: "Newtown",
       takes: "women, no AOD, no pets",
-      beds: "1 · called yesterday",
       forMaya: "Not eligible · dog",
     },
     {
       name: "Link2Home",
       area: "statewide",
       takes: "referral line",
-      beds: "–",
       forMaya: "Referral sent 28 Aug",
     },
     {
       name: "Bonnie Support",
       area: "Marrickville",
-      takes: "women, nil-income beds",
-      beds: "0 · emailed 3 Sep",
-      forMaya: "Eligible, no bed",
+      takes: "women, nil income accepted",
+      forMaya: "Eligible",
       eligible: true,
     },
     {
       name: "Northern Beaches Refuge",
       area: "Manly",
       takes: "women + children",
-      beds: "3 · called Mon",
       forMaya: "Not eligible · no children · far",
     },
   ],
   showAll: "Show all 14 services",
   showAllNote:
-    "6 more outside Inner West · capacity is what they told us, when they told us",
+    "6 more outside Inner West · capacity is only what a provider confirmed, and when",
   newService: {
     title: "Heard of a new service?",
     placeholder: "Type its name",
@@ -747,7 +722,7 @@ export const SHELTERS = {
     title: "Call list · today",
     items: [
       { name: "Cedar Family Support", detail: "retry 14:00" },
-      { name: "Harbour House", detail: "confirm bed by 16:00" },
+      { name: "Harbour House", detail: "confirm capacity by 16:00" },
       { name: "Rosa House", detail: "ask about pet bond" },
     ],
   },
@@ -756,34 +731,35 @@ export const SHELTERS = {
       "Maya: dog, Inner West, no children, Centrelink, needs a bed tonight, no curfew",
     button: "Find shelters",
     resultsTitle: "3 eligible for Maya",
-    resultsNote: "from the ask above · beds as last confirmed",
+    resultsNote:
+      "Demo status. From the ask above — the service data carries wait times, not capacity.",
     results: [
       {
         name: "Harbour House",
         badge: "Eligible",
         area: "Marrickville · Inner West",
         takes: "women, pets, curfew 11 pm",
-        beds: "1 · called 09:10",
-        why: "dog OK · Inner West · 1 bed tonight",
+        capacity: "Current capacity unknown — call to confirm.",
+        why: "dog OK · Inner West · no curfew",
         action: "Lock in",
-        actionNote: "best fit for tonight",
+        actionNote: "best fit on what we know — capacity still to confirm",
       },
       {
         name: "Bridgewell",
-        badge: "Eligible, no bed",
+        badge: "Eligible",
         area: "Ashfield · Inner West",
         takes: "women + children, pets on file",
-        beds: "0 · emailed yesterday",
-        why: "pets on file · no curfew · bed when one frees",
+        capacity: "Current capacity unknown — call to confirm.",
+        why: "pets on file · no curfew",
         action: "Choose",
       },
       {
         name: "Bonnie Support",
-        badge: "Eligible, no bed",
+        badge: "Eligible",
         area: "Marrickville · Inner West",
-        takes: "women, nil-income beds",
-        beds: "0 · emailed 3 Sep",
-        why: "Centrelink OK · nil-income bed · no curfew",
+        takes: "women, nil income accepted",
+        capacity: "Current capacity unknown — call to confirm.",
+        why: "Centrelink OK · nil income accepted · no curfew",
         action: "Choose",
       },
     ],

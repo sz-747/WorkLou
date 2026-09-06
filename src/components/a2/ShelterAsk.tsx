@@ -18,7 +18,7 @@ export function ShelterAsk() {
           rows={2}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          aria-label="Describe who needs a bed"
+          aria-label="Describe who needs accommodation"
         />
         <div className="a2s-btn-row">
           <button
@@ -52,8 +52,8 @@ export function ShelterAsk() {
                 </p>
                 <p className="a2s-spotlight-label">Takes</p>
                 <p className="a2s-fact">{result.takes}</p>
-                <p className="a2s-spotlight-label">Beds</p>
-                <p className="a2s-fact">{result.beds}</p>
+                <p className="a2s-spotlight-label">Accommodation availability</p>
+                <p className="a2s-fact">{result.capacity}</p>
                 <p className="a2s-spotlight-label">Why</p>
                 <p className="a2s-fact">{result.why}</p>
                 <div className="a2s-btn-row" style={{ marginTop: 14 }}>

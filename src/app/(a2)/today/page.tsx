@@ -3,17 +3,20 @@ import { AskBar } from "../../../components/a2/AskBar";
 import { RailRow, Row, Sheet } from "../../../components/a2/Sheet";
 import { Empty } from "../../../components/a2/Empty";
 import { getTodayView } from "../../../lib/a2/today";
-import { SHELTER_BEDS, SHELTER_BEDS_NOTE } from "../../../lib/a2-mock";
+import { getAccommodationAvailability } from "../../../lib/a2/capacity";
 
 /**
  * A2 / Today (136:139). Needs attention, follow-ups and letters come from the
- * casework tables. Shelter bed capacity has no backend yet, so that rail is
- * still demo content.
+ * casework tables. Accommodation availability shows only provider-confirmed
+ * capacity — the service import carries wait times, never bed counts.
  */
 export const dynamic = "force-dynamic";
 
 export default async function Today() {
-  const today = await getTodayView();
+  const [today, availability] = await Promise.all([
+    getTodayView(),
+    getAccommodationAvailability(),
+  ]);
 
   return (
     <>
@@ -62,25 +65,29 @@ export default async function Today() {
 
         <div className="a2s-rail">
           <Sheet
-            title="Shelter beds today"
-            note={SHELTER_BEDS_NOTE}
+            title="Accommodation availability"
+            note="Only what a provider confirmed, and when. We do not track bed counts."
             foot={
               <Link className="a2s-link" href="/shelters">
                 All services
               </Link>
             }
           >
-            <ul className="a2s-rail-rows">
-              {SHELTER_BEDS.map((shelter) => (
-                <RailRow
-                  key={shelter.name}
-                  name={shelter.name}
-                  meta={shelter.beds}
-                  detail={shelter.detail}
-                  unknown={shelter.unknown}
-                />
-              ))}
-            </ul>
+            {availability.length === 0 ? (
+              <Empty>No accommodation services in the database yet.</Empty>
+            ) : (
+              <ul className="a2s-rail-rows">
+                {availability.map((service) => (
+                  <RailRow
+                    key={service.id}
+                    name={service.name}
+                    meta={service.status}
+                    detail={service.detail}
+                    unknown={service.unknown || service.stale}
+                  />
+                ))}
+              </ul>
+            )}
           </Sheet>
 
           <Sheet

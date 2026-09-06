@@ -8,8 +8,8 @@ import { getSheltersView } from "../../../lib/a2/shelters";
 /**
  * A2 / Shelters (136:2) with the ask panel from A2 / Shelters · ask (146:47).
  * Data: canonical services + their stored facts, with freshness provenance.
- * Bed capacity is not in the schema yet, so the "Beds" column of the design is
- * replaced by contact + last-checked, which we can actually evidence.
+ * The import carries wait times, not beds or capacity, so the design's "Beds"
+ * column is replaced by contact + last-checked, which we can actually evidence.
  */
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export default async function Shelters() {
         <div>
           <ShelterAsk />
 
-          <Sheet note="Facts are what the provider told us, when they told us. Bed capacity is not tracked yet.">
+          <Sheet note="Facts are what the provider told us, when they told us. Capacity is not tracked — call to confirm availability.">
             {view.rows.length === 0 ? (
               <Empty>No active services in the database.</Empty>
             ) : (
