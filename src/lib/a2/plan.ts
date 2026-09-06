@@ -1,39 +1,42 @@
-/**
- * Plan view model — the three steps a worker actually walks through for one
- * woman: what we suggest, what is being done, and an email to an alternative
- * community service when the first options do not work out.
- *
- * Read-only. Everything comes from her approved context, the services table
- * (loaded from the service CSV/discovery) and her existing referrals. The
- * email body is built with the SAME deterministic builder Refer uses, so no
- * service fact and no context field is invented here.
- */
-import { eq } from "drizzle-orm";
+/** Ranked case plan built from approved Postgres context and stored service facts. */
+import { desc, eq } from "drizzle-orm";
 import { db } from "../../db";
-import { cases, type CaseContext } from "../../db/schema";
+import { caseContexts, cases } from "../../db/schema";
 import { CONTEXT_FIELDS, fieldHasValue, fieldValuePreview } from "../context-fields";
 import { getLatestApprovedContext, getMatchCandidates, matchServices } from "../matching";
-import { buildReferralDraftInput, fallbackReferralText, getServiceForRefer } from "../refer";
-import { getReferralsForCase } from "../refer";
-import { contactLabel, displayName, dueLabel, firstNameOf, humanise, joinParts } from "./format";
-
-export type PlanSuggestion = { key: string; label: string; detail: string; need: string };
+import { buildReferralDraftInput, fallbackReferralText, getReferralsForCase } from "../refer";
+import { displayName, firstNameOf, humanise, joinParts } from "./format";
+import { getCaseworkerSettings } from "./caseworker-settings";
 
 export type PlanAction = {
-  key: string;
+  key: "needs" | "matches" | "confirm" | "referral" | "followthrough";
   title: string;
-  detail: string;
   state: "done" | "waiting" | "next";
+};
+
+export type PlanCriterion = {
+  key: string;
+  label: string;
+  detail: string;
+  status: "matched" | "stale" | "needs_provider_confirmation" | "not_recorded" | "mismatch";
 };
 
 export type PlanServiceOption = {
   id: string;
+  rank: number;
+  score: number;
   name: string;
   organisation: string | null;
-  detail: string;
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  catchment: string | null;
   suitable: boolean;
-  /** already referred to for this woman */
-  alreadyReferred: boolean;
+  reason: string | null;
+  criteria: PlanCriterion[];
+  emailSubject: string;
+  emailBody: string;
+  referralStatus: string | null;
 };
 
 export type Plan = {
@@ -41,176 +44,148 @@ export type Plan = {
   name: string;
   firstName: string;
   ref: string;
-  subline: string;
-  needs: string[];
-  suggestions: PlanSuggestion[];
-  actions: PlanAction[];
+  location: string;
+  summary: string | null;
+  critical: { key: string; label: string; value: string }[];
+  searchedCount: number;
   services: PlanServiceOption[];
-  /** the service the email is being written to, when one is chosen */
-  selected: PlanServiceOption | null;
-  emailSubject: string;
-  emailBody: string;
-  /** context fields the body draws on — shown so the worker sees the basis */
-  known: { label: string; value: string }[];
+  actions: PlanAction[];
+  urgency: string | null;
+  sender: { name: string; email: string };
 };
 
-/** Suggestions come from her approved context — never from a wish list. */
-function suggestionsOf(context: CaseContext | null): PlanSuggestion[] {
-  if (!context) return [];
-  const out: PlanSuggestion[] = (context.needs ?? []).map((need) => ({
-    key: `need:${need}`,
-    label: humanise(need),
-    detail: joinParts([context.suburb, context.urgency ? humanise(context.urgency) : null]),
-    need,
-  }));
-  if (context.pets?.has_pet) {
-    out.push({
-      key: "pet",
-      label: "Pet-friendly placement",
-      detail: context.pets.details ?? "she will not leave her pet",
-      need: "pet_friendly",
-    });
-  }
-  if (context.children?.count) {
-    out.push({
-      key: "children",
-      label: "Room for her children",
-      detail: `${context.children.count} children`,
-      need: "children",
-    });
-  }
-  if (context.visa) {
-    out.push({
-      key: "visa",
-      label: "Visa-aware support",
-      detail: humanise(context.visa),
-      need: "visa",
-    });
-  }
-  if (context.languages?.length) {
-    out.push({
-      key: "language",
-      label: "Interpreter",
-      detail: context.languages.join(", "),
-      need: "interpreter",
-    });
-  }
-  return out;
+function criterionLabel(criterion: string): string {
+  if (criterion.startsWith("need:")) return humanise(criterion.slice(5).trim());
+  return humanise(criterion);
 }
 
-export async function loadPlan(
-  caseId: string,
-  serviceId?: string,
-  now: Date = new Date(),
-): Promise<Plan | null> {
+const CRITICAL_FIELD_ORDER = [
+  "income",
+  "languages",
+  "children",
+  "pets",
+  "urgency",
+  "needs",
+  "visa",
+  "safe_contact_method",
+  "safety_preferences",
+];
+
+export async function loadPlan(caseId: string, _serviceId?: string): Promise<Plan | null> {
   const [caseRow] = await db.select().from(cases).where(eq(cases.id, caseId));
   if (!caseRow) return null;
 
-  const [approved, referralRows, candidates] = await Promise.all([
+  const [approved, referralRows, candidates, sender] = await Promise.all([
     getLatestApprovedContext(caseId),
     getReferralsForCase(caseId),
     getMatchCandidates(),
+    getCaseworkerSettings(),
   ]);
-
   const context = approved?.context ?? null;
-  const results = context ? matchServices(context, candidates, now) : [];
-  const referredIds = new Set(referralRows.map((r) => r.serviceId));
+  const results = context ? matchServices(context, candidates) : [];
+  const referralByService = new Map(referralRows.map((row) => [row.serviceId, row]));
 
-  const services: PlanServiceOption[] = results.map((result) => ({
-    id: result.service.id,
-    name: result.service.name,
-    organisation: result.service.organisation,
-    detail: result.suitable
-      ? joinParts([
-          result.matchedNeeds.map(humanise).join(", ") || null,
-          result.service.catchment,
-        ]) || "matches what she needs"
-      : (result.reason ?? "not a match"),
-    suitable: result.suitable,
-    alreadyReferred: referredIds.has(result.service.id),
-  }));
-
-  const actions: PlanAction[] = [
-    {
-      key: "context",
-      title: "Summary approved with her",
-      detail: approved ? `version ${approved.version}` : "not approved yet",
-      state: approved ? "done" : "next",
-    },
-    {
-      key: "search",
-      title: "Search community services",
-      detail: approved
-        ? `${services.filter((s) => s.suitable).length} suitable of ${services.length} searched`
-        : "waiting for the approved summary",
-      state: approved ? (services.some((s) => s.suitable) ? "done" : "next") : "waiting",
-    },
-    ...referralRows.map((referral) => ({
-      key: referral.id,
-      title: `${referral.serviceName} referral`,
-      detail: joinParts([
-        referral.status === "draft" ? "draft kept" : referral.status,
-        referral.sentAt ? `sent ${contactLabel(referral.sentAt, now)}` : null,
-        referral.followUpDue ? `follow-up ${dueLabel(referral.followUpDue, now)}` : null,
-      ]),
-      state:
-        referral.outcome === "accepted"
-          ? ("done" as const)
-          : referral.status === "draft"
-            ? ("next" as const)
-            : ("waiting" as const),
-    })),
-  ];
-
-  const known = context
-    ? CONTEXT_FIELDS.filter((field) => fieldHasValue(field.key, context)).map((field) => ({
-        label: field.label,
-        value: fieldValuePreview(field.key, context)!,
-      }))
+  const critical = context
+    ? CONTEXT_FIELDS.filter(
+        (field) => !["summary", "suburb", "catchment"].includes(field.key) && fieldHasValue(field.key, context),
+      )
+        .sort((a, b) => {
+          const aIndex = CRITICAL_FIELD_ORDER.indexOf(a.key);
+          const bIndex = CRITICAL_FIELD_ORDER.indexOf(b.key);
+          return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
+        })
+        .map((field) => ({
+          key: field.key,
+          label: field.label,
+          value: fieldValuePreview(field.key, context)!,
+        }))
     : [];
 
-  const selected = services.find((service) => service.id === serviceId) ?? null;
-  let emailBody = "";
-  let emailSubject = "";
-  if (selected && context) {
-    const stored = await getServiceForRefer(selected.id);
-    if (stored) {
-      const input = buildReferralDraftInput(
-        context,
-        CONTEXT_FIELDS.map((field) => field.key),
-        {
-          name: stored.service.name,
-          organisation: stored.service.organisation,
-          phone: stored.service.phone,
-          catchment: stored.service.catchment,
-        },
-        stored.facts,
-      );
-      emailBody = fallbackReferralText(input);
-      emailSubject = `Referral enquiry · ${joinParts([
-        (context.needs ?? []).map(humanise).join(", ") || "support",
-        context.suburb,
-      ])} · ${caseRow.clientRef}`;
-    }
-  }
+  const services: PlanServiceOption[] = results.slice(0, 3).map((result, index) => {
+    const input = context
+      ? buildReferralDraftInput(
+          context,
+          CONTEXT_FIELDS.map((field) => field.key),
+          {
+            name: result.service.name,
+            organisation: result.service.organisation,
+            phone: result.service.phone,
+            catchment: result.service.catchment,
+          },
+          result.service.attributes,
+        )
+      : null;
+    const existing = referralByService.get(result.service.id);
 
+    return {
+      id: result.service.id,
+      rank: index + 1,
+      score: result.score ?? 0,
+      name: result.service.name,
+      organisation: result.service.organisation,
+      website: result.service.website ?? null,
+      phone: result.service.phone,
+      email: result.service.email ?? null,
+      catchment: result.service.catchment,
+      suitable: result.suitable,
+      reason: result.reason,
+      criteria: result.criteria.map((criterion, criterionIndex) => ({
+        key: `${criterion.criterion}:${criterionIndex}`,
+        label: criterionLabel(criterion.criterion),
+        detail: criterion.detail,
+        status: criterion.status,
+      })),
+      emailSubject: `Referral enquiry · ${joinParts([
+        (context?.needs ?? []).map(humanise).join(", ") || "support",
+        context?.suburb,
+      ])} · ${caseRow.clientRef}`,
+      emailBody: input
+        ? `${fallbackReferralText(input)}\n\n${[
+            "Kind regards,",
+            sender.name,
+            sender.email,
+          ].filter(Boolean).join("\n")}`
+        : "",
+      referralStatus: existing?.status ?? null,
+    };
+  });
+
+  const hasReferral = referralRows.some((row) => row.status !== "draft");
   return {
     caseId: caseRow.id,
     name: displayName(caseRow),
     firstName: firstNameOf(caseRow),
     ref: caseRow.clientRef,
-    subline: joinParts([
-      context ? "from her approved summary" : "no approved summary yet",
-      `${services.filter((s) => s.suitable).length} services shortlisted`,
-      `${referralRows.length} referrals`,
-    ]),
-    needs: (context?.needs ?? []).map(humanise),
-    suggestions: suggestionsOf(context),
-    actions,
+    location: context?.suburb ?? context?.catchment ?? "Location not recorded",
+    summary: context?.summary ?? null,
+    critical,
+    searchedCount: results.length,
     services,
-    selected,
-    emailSubject,
-    emailBody,
-    known,
+    urgency: context?.urgency ?? null,
+    sender: { name: sender.name, email: sender.email },
+    actions: [
+      { key: "needs", title: "Understand her needs", state: approved ? "done" : "next" },
+      { key: "matches", title: "Find suitable support", state: services.length ? "done" : "waiting" },
+      { key: "confirm", title: "Confirm important details", state: hasReferral ? "done" : "next" },
+      { key: "referral", title: "Make the referral", state: hasReferral ? "done" : "waiting" },
+      {
+        key: "followthrough",
+        title: "Follow through and document",
+        state: hasReferral ? "next" : "waiting",
+      },
+    ],
   };
+}
+
+/** Most recently approved open case, used when the shared Services tab has no case in its URL. */
+export async function loadLatestPlan(): Promise<Plan | null> {
+  const [row] = await db
+    .select({ caseId: cases.id })
+    .from(caseContexts)
+    .innerJoin(cases, eq(caseContexts.caseId, cases.id))
+    .where(eq(caseContexts.status, "approved"))
+    .orderBy(desc(caseContexts.approvedAt), desc(cases.createdAt))
+    .limit(1);
+
+  return row ? loadPlan(row.caseId) : null;
 }

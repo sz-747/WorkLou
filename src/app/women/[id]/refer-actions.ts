@@ -86,6 +86,7 @@ export async function generateReferralDraft(fd: FormData): Promise<void> {
   });
 
   revalidatePath(`/women/${caseId}`);
+  revalidatePath("/clients");
 }
 
 /** Worker edits a draft in place. Sent referrals are never touched. */
@@ -100,6 +101,7 @@ export async function saveReferralDraft(fd: FormData): Promise<void> {
   const ok = await saveReferralDraftText(referralId, draftText!);
   if (!ok) back("Only draft referrals can be edited — sent referrals never change.");
   revalidatePath(`/women/${caseId}`);
+  revalidatePath("/clients");
 }
 
 /** Demo-only: records the referral as sent with the follow-up date. */
@@ -117,4 +119,5 @@ export async function markSent(fd: FormData): Promise<void> {
     );
   }
   revalidatePath(`/women/${caseId}`);
+  revalidatePath("/clients");
 }

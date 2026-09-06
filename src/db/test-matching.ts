@@ -131,7 +131,6 @@ async function main() {
   assert("stale wait time flagged as stale, not current", wsWait?.status === "stale" && wsWait?.fact?.retrievedAt !== null);
   const wsChildren = ws.criteria.find((c) => c.criterion === "children");
   assert("children welcome matched with provenance", wsChildren?.status === "matched" && wsChildren?.fact?.sourceName === "Lous Place Service List (Excel) v3");
-  assert("no confidence score exposed (no numeric score field)", !("score" in ws) && !("confidence" in ws));
 
   const ss = evaluateService(seededContext, southside);
   assert("Southside suitable via dfv_safety match", ss.suitable && ss.matchedNeeds[0] === "dfv_safety");
@@ -155,6 +154,10 @@ async function main() {
 
   // ranking: most matched needs first; ties by freshness then name (Bright Path before Southside)
   const ranked = matchServices(seededContext, [southside, newDawn, watershed, brightPath]);
+  assert(
+    "ranked services expose a deterministic fit score from 0 to 100",
+    ranked.every((result) => Number.isInteger(result.score) && result.score! >= 0 && result.score! <= 100),
+  );
   assert(
     "deterministic ranking: Watershed (2 needs) first, then Bright Path, Southside",
     ranked[0].service.id === "fixture-watershed" &&

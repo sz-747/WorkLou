@@ -60,6 +60,7 @@ export async function recordResponse(fd: FormData): Promise<void> {
   const ok = await recordProviderResponse(referralId, responseText!);
   if (!ok) back("Only open (sent/responded) referrals accept responses.");
   revalidatePath(`/women/${caseId}`);
+  revalidatePath("/clients");
 }
 
 /** Worker records an outcome. awaiting_reply keeps the referral open. */
@@ -76,6 +77,7 @@ export async function recordOutcomeAction(fd: FormData): Promise<void> {
   const ok = await recordOutcome(referralId, outcome as Parameters<typeof recordOutcome>[1], outcomeNotes);
   if (!ok) back("Only open (sent/responded) referrals accept outcomes.");
   revalidatePath(`/women/${caseId}`);
+  revalidatePath("/clients");
 }
 
 /** Draft a follow-up message for worker review. Nothing is transmitted. */

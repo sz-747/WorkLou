@@ -34,7 +34,9 @@ export type ServiceCandidate = {
   id: string;
   name: string;
   organisation: string | null;
+  website?: string | null;
   phone: string | null;
+  email?: string | null;
   catchment: string | null;
   attributes: FactRow[];
 };
@@ -62,6 +64,8 @@ export type MatchResult = {
   suitable: boolean;
   /** One-line deterministic reason when not suitable. Null when suitable. */
   reason: string | null;
+  /** Transparent, deterministic fit score used to rank the service. */
+  score?: number;
 };
 
 /** Deterministic freshness ordering for ranking (never shown as a "score"). */
@@ -385,17 +389,68 @@ function deliveryScore(result: MatchResult): number {
   return 0;
 }
 
+const STATUS_FIT: Record<CriterionStatus, number> = {
+  matched: 1,
+  stale: 0.6,
+  needs_provider_confirmation: 0.3,
+  not_recorded: 0.2,
+  mismatch: 0,
+};
+
+function criterionWeight(criterion: Criterion): number {
+  if (["children", "pets", "visa"].includes(criterion.criterion)) return 3;
+  if (["languages", "income", "wait time", "capacity"].includes(criterion.criterion)) return 2;
+  return 1;
+}
+
 /**
- * Evaluate + rank all services. Pure. Deterministic order: matched needs,
- * then fact freshness (provider_confirmed > verified_machine > stale),
- * then name. No scores are exposed to the UI.
+ * Score one result out of 100. Need coverage is the largest component,
+ * followed by eligibility fit, location and evidence freshness. Unknown facts
+ * receive limited credit so complete, current provider data ranks higher.
+ */
+export function serviceFitScore(context: CaseContext, result: MatchResult): number {
+  const needDenominator = Math.max(context.needs.length, 1);
+  const needPoints = (Math.min(result.matchedNeeds.length, needDenominator) / needDenominator) * 40;
+
+  const relevant = result.criteria.filter(
+    (criterion) => !criterion.criterion.startsWith("need:") && criterion.criterion !== "geography",
+  );
+  const totalWeight = relevant.reduce((sum, criterion) => sum + criterionWeight(criterion), 0);
+  const fitPoints = totalWeight
+    ? relevant.reduce(
+        (sum, criterion) => sum + STATUS_FIT[criterion.status] * criterionWeight(criterion),
+        0,
+      ) / totalWeight * 35
+    : 0;
+
+  const geography = result.criteria.find((criterion) => criterion.criterion === "geography");
+  const locationPoints = geography ? STATUS_FIT[geography.status] * 15 : 0;
+
+  const evidenced = result.criteria.filter((criterion) => criterion.fact);
+  const freshnessPoints = evidenced.length
+    ? evidenced.reduce(
+        (sum, criterion) =>
+          sum + (FRESHNESS_RANK[criterion.fact!.verificationStatus] ?? 0) / 3,
+        0,
+      ) / evidenced.length * 10
+    : 0;
+
+  return Math.max(0, Math.min(100, Math.round(needPoints + fitPoints + locationPoints + freshnessPoints)));
+}
+
+/**
+ * Evaluate + rank all services by the transparent fit score. Ties use the
+ * underlying fit signals and finally the service name for stable ordering.
  */
 export function matchServices(context: CaseContext, candidates: ServiceCandidate[], now: Date = new Date()): MatchResult[] {
   return candidates
-    .map((c) => evaluateService(context, c, now))
+    .map((candidate) => {
+      const result = evaluateService(context, candidate, now);
+      return { ...result, score: serviceFitScore(context, result) };
+    })
     .sort(
       (a, b) =>
-        Number(b.suitable) - Number(a.suitable) ||
+        (b.score ?? 0) - (a.score ?? 0) ||
         b.matchedNeeds.length - a.matchedNeeds.length ||
         geographyScore(b) - geographyScore(a) ||
         deliveryScore(b) - deliveryScore(a) ||
@@ -429,7 +484,9 @@ export async function getMatchCandidates(): Promise<ServiceCandidate[]> {
     id: s.id,
     name: s.name,
     organisation: s.organisation,
+    website: s.website,
     phone: s.phone,
+    email: s.email,
     catchment: s.catchment,
     attributes: byService.get(s.id) ?? [],
   }));

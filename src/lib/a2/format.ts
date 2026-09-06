@@ -16,6 +16,18 @@ export function timeLabel(value: Date | string): string {
   }).format(new Date(value));
 }
 
+/** "3:36 AM" in Sydney time. */
+export function timeLabel12(value: Date | string): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    timeZone: TZ,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+    .format(new Date(value))
+    .replace(/\b(am|pm)\b/i, (period) => period.toUpperCase());
+}
+
 /** "2 Sep" in Sydney time. */
 export function shortDate(value: Date | string): string {
   return new Intl.DateTimeFormat("en-AU", {
@@ -23,6 +35,26 @@ export function shortDate(value: Date | string): string {
     day: "numeric",
     month: "short",
   }).format(new Date(value));
+}
+
+function ordinal(day: number): string {
+  if (day >= 11 && day <= 13) return `${day}th`;
+  if (day % 10 === 1) return `${day}st`;
+  if (day % 10 === 2) return `${day}nd`;
+  if (day % 10 === 3) return `${day}rd`;
+  return `${day}th`;
+}
+
+/** "9th September" in Sydney time. */
+export function longDateLabel(value: Date | string): string {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: TZ,
+    day: "numeric",
+    month: "long",
+  }).formatToParts(new Date(value));
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+  const month = parts.find((part) => part.type === "month")?.value;
+  return Number.isFinite(day) && month ? `${ordinal(day)} ${month}` : shortDate(value);
 }
 
 /** "today" · "yesterday" · "2 Sep". */
@@ -38,6 +70,17 @@ export function contactLabel(value: Date | string | null, now: Date = new Date()
   if (!value) return "–";
   const label = dayLabel(value, now);
   return label === "today" ? `today ${timeLabel(value)}` : label;
+}
+
+/** The People-list label always includes an AM/PM time. */
+export function clientLastContactLabel(
+  value: Date | string | null,
+  now: Date = new Date(),
+): string {
+  if (!value) return "–";
+  const day = dayLabel(value, now);
+  const when = day === "today" || day === "yesterday" ? day : longDateLabel(value);
+  return `${when} ${timeLabel12(value)}`;
 }
 
 /** Whole days a due date is past, 0 when it is today or in the future. */
@@ -56,6 +99,13 @@ export function dueLabel(due: string | null, now: Date = new Date()): string {
   if (overdue > 1) return `Overdue ${overdue} days`;
   if (due === sydneyDate(now)) return "today";
   return shortDate(`${due}T12:00:00Z`);
+}
+
+/** People-list follow-ups read as either "today" or a concrete calendar date. */
+export function clientNextFollowUpLabel(due: string | null, now: Date = new Date()): string {
+  if (!due) return "–";
+  if (due === sydneyDate(now)) return "today";
+  return longDateLabel(`${due}T12:00:00Z`);
 }
 
 /** Initials for the avatar chip, from a name like "Maya Thompson". */

@@ -286,10 +286,19 @@ export const cases = pgTable("cases", {
    * de-identified label used for data (referral text, exports, evaluation).
    */
   clientName: text("client_name"),
+  clientEmail: text("client_email"),
   originalNotes: text("original_notes").notNull(),
   appointmentAt: timestamp("appointment_at", { withTimezone: true }).notNull().defaultNow(),
   status: text("status").notNull().default("open"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Single-caseworker demo settings. Gmail will use this identity when connected. */
+export const caseworkerSettings = pgTable("caseworker_settings", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** Append-only record of every raw-note version submitted for extraction. */

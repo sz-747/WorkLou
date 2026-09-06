@@ -3,7 +3,7 @@
  * tables: cases, note revisions, approved/draft contexts, referrals and case
  * documents. Nothing here writes.
  */
-import { asc, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "../../db";
 import {
   caseContexts,
@@ -18,6 +18,8 @@ import { getReferralsForCase } from "../refer";
 import { getCaseDocuments } from "../document";
 import { getReferralEventsForCase, outcomeLabel } from "../followup";
 import {
+  clientLastContactLabel,
+  clientNextFollowUpLabel,
   contactLabel,
   displayName,
   firstNameOf,
@@ -40,7 +42,6 @@ export type ClientRow = {
   last: string;
   next: string;
   nextOverdue: boolean;
-  attention: string;
 };
 
 /** Latest context per case — approved wins over a newer draft. */
@@ -56,15 +57,27 @@ function focusOf(context: CaseContext | undefined): string {
   return joinParts([needs.join(", ") || null, context.suburb]) || "–";
 }
 
-/** Where the case has got to, derived from its referrals. */
-function stageOf(
+/** The People list reflects the newest extraction, including a draft awaiting review. */
+function pickNewestContext<T extends { version: number }>(rows: T[]): T | undefined {
+  return [...rows].sort((a, b) => b.version - a.version)[0];
+}
+
+/** The most advanced state wins; rows arrive newest-first within each state. */
+function currentStageOf(
   caseRow: { status: string },
   caseReferrals: { status: string; serviceName: string }[],
 ): string {
-  const sent = caseReferrals.find((r) => r.status === "sent" || r.status === "responded");
-  if (sent) return `Referral ${sent.status} · ${sent.serviceName}`;
-  const draft = caseReferrals.find((r) => r.status === "draft" || r.status === "approved");
-  if (draft) return `Referral draft · ${draft.serviceName}`;
+  if (caseRow.status === "closed") return "Closed";
+  const responded = caseReferrals.find((referral) => referral.status === "responded");
+  if (responded) return `Service responded · ${responded.serviceName}`;
+  const sent = caseReferrals.find((referral) => referral.status === "sent");
+  if (sent) return `Referral sent · ${sent.serviceName}`;
+  const ready = caseReferrals.find(
+    (referral) => referral.status === "draft" || referral.status === "approved",
+  );
+  if (ready) return `Referral ready · ${ready.serviceName}`;
+  const completed = caseReferrals.find((referral) => referral.status === "closed");
+  if (completed) return `Referral closed · ${completed.serviceName}`;
   return caseRow.status === "open" ? "Intake" : caseRow.status;
 }
 
@@ -92,17 +105,17 @@ export async function getClientRows(now: Date = new Date()): Promise<ClientRow[]
       })
       .from(referrals)
       .innerJoin(services, eq(referrals.serviceId, services.id))
-      .orderBy(asc(referrals.followUpDue)),
+      .orderBy(desc(referrals.createdAt)),
   ]);
 
   return caseRows.map((caseRow) => {
-    const context = pickContext(contextRows.filter((c) => c.caseId === caseRow.id))?.context;
+    const context = pickNewestContext(contextRows.filter((c) => c.caseId === caseRow.id))?.context;
     const caseReferrals = referralRows.filter((r) => r.caseId === caseRow.id);
     const open = caseReferrals.filter((r) => r.status === "sent" || r.status === "responded");
-    const nextDue = open.map((r) => r.followUpDue).filter((d): d is string => !!d)[0] ?? null;
-    const overdueCount = open.filter(
-      (r) => r.followUpDue && daysOverdue(r.followUpDue, now) > 0,
-    ).length;
+    const nextDue = open
+      .map((r) => r.followUpDue)
+      .filter((d): d is string => !!d)
+      .sort()[0] ?? null;
     const lastNote = noteRows.find((n) => n.caseId === caseRow.id);
 
     return {
@@ -110,16 +123,15 @@ export async function getClientRows(now: Date = new Date()): Promise<ClientRow[]
       name: displayName(caseRow),
       ref: caseRow.clientRef,
       focus: focusOf(context),
-      stage: stageOf(caseRow, caseReferrals),
-      last: contactLabel(lastNote?.recordedAt ?? caseRow.createdAt, now),
-      next: dueLabel(nextDue, now),
+      stage: currentStageOf(caseRow, caseReferrals),
+      last: clientLastContactLabel(lastNote?.recordedAt ?? caseRow.createdAt, now),
+      next: clientNextFollowUpLabel(nextDue, now),
       nextOverdue: !!nextDue && daysOverdue(nextDue, now) > 0,
-      attention: overdueCount > 0 ? String(overdueCount) : "–",
     };
   });
 }
 
-export type ProfileFile = { name: string; detail: string };
+export type ProfileFile = { name: string; detail: string; href?: string };
 export type ProfileTimelineItem = { key: string; when: string; what: string };
 
 export type ClientProfile = {
@@ -135,6 +147,7 @@ export type ClientProfile = {
   recentContact: ProfileTimelineItem[];
   referrals: { key: string; name: string; detail: string }[];
   attention: { key: string; name: string; detail: string }[];
+  journey: { currentStage: number; statuses: string[] };
 };
 
 /** Context fields the design shows as chips on the profile head. */
@@ -175,6 +188,17 @@ export async function getClientProfile(
   const latest = pickContext(contextRows);
   const context = latest?.context;
   const open = referralRows.filter((r) => r.status === "sent" || r.status === "responded");
+  const contextApproved = latest?.status === "approved";
+  const hasSentReferral = referralRows.some((r) => r.status === "sent" || r.status === "responded");
+  const hasDraftReferral = referralRows.some((r) => r.status === "draft" || r.status === "approved");
+  const hasApprovedDocument = documents.some((document) => document.status === "approved");
+  const currentStage = !contextApproved
+    ? 1
+    : hasSentReferral
+      ? 5
+      : hasDraftReferral
+        ? 4
+        : 2;
 
   const files: ProfileFile[] = [
     {
@@ -189,12 +213,18 @@ export async function getClientProfile(
           }`
         : "not extracted yet",
     },
-    {
-      name: `Letters (${documents.length})`,
-      detail: documents[0]
-        ? `${documents[0].status} · ${contactLabel(documents[0].createdAt, now)}`
-        : "none yet",
-    },
+    ...(caseRow.clientRef === "CASE-2026-001"
+      ? [{
+          name: "Support referral letter.pdf",
+          detail: "Local demo PDF · opens in a new tab",
+          href: "/demo/amira-support-referral-letter.pdf",
+        }]
+      : [{
+          name: `Letters (${documents.length})`,
+          detail: documents[0]
+            ? `${documents[0].status} · ${contactLabel(documents[0].createdAt, now)}`
+            : "none yet",
+        }]),
     {
       name: `Referrals (${referralRows.length})`,
       detail: open.length > 0 ? `${open.length} in flight` : "none in flight",
@@ -212,7 +242,10 @@ export async function getClientProfile(
       `opened ${shortDate(caseRow.createdAt)}`,
       `last contact ${contactLabel(noteRows[0]?.recordedAt ?? caseRow.createdAt, now)}`,
     ]),
-    chips: chipsOf(context),
+    chips: [
+      ...(caseRow.clientEmail ? [`Email · ${caseRow.clientEmail}`] : []),
+      ...chipsOf(context),
+    ],
     summary: {
       body: context?.summary ?? null,
       checked: latest?.approvedAt
@@ -249,5 +282,23 @@ export async function getClientProfile(
         name: `${referral.serviceName} follow-up`,
         detail: dueLabel(referral.followUpDue, now).toLowerCase(),
       })),
+    journey: {
+      currentStage,
+      statuses: [
+        contextApproved ? "Summary approved" : latest ? "Needs your review" : "Start here",
+        contextApproved ? "Ready to review ranked services" : "Waiting for summary",
+        hasDraftReferral || hasSentReferral
+          ? "Important details reviewed"
+          : contextApproved
+            ? "Review service trade-offs"
+            : "Waiting for matches",
+        hasSentReferral ? "Referral sent" : hasDraftReferral ? "Draft ready" : "Not started",
+        hasApprovedDocument
+          ? "Case note complete"
+          : hasSentReferral
+            ? "Follow-up in progress"
+            : "Waiting for referral",
+      ],
+    },
   };
 }

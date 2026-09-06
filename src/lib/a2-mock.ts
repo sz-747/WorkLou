@@ -99,7 +99,7 @@ export const ALERTS = {
 
 export const IDENTITY_MENU = {
   line: "Hannah Lee · Caseworker · Lou's Place",
-  items: ["My day", "Settings"],
+  items: ["My day", "Contributions", "Settings"],
   logout: "Log out",
 };
 

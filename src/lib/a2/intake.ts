@@ -28,14 +28,22 @@ async function nextClientRef(now: Date): Promise<string> {
   return `${prefix}${String(Number.isFinite(n) ? n : 1).padStart(3, "0")}`;
 }
 
-export type NewPersonInput = { name: string; notes: string };
+export type NewPersonInput = { name: string; email: string; notes: string };
 
-/** Creates the case, keeps the notes, extracts a draft context. Returns caseId. */
+export type NewPersonResult = {
+  caseId: string;
+  contextId: string;
+  context: CaseContext;
+  extractionModel: string;
+};
+
+/** Creates the case, keeps the notes, and returns its extracted draft context. */
 export async function createPersonFromNotes(
   input: NewPersonInput,
   now: Date = new Date(),
-): Promise<string> {
+): Promise<NewPersonResult> {
   const name = input.name.trim();
+  const email = input.email.trim().toLowerCase();
   const notes = input.notes.trim();
   if (!name) throw new Error("Her name is required.");
   if (!notes) throw new Error("Call notes are required.");
@@ -45,6 +53,7 @@ export async function createPersonFromNotes(
     .values({
       clientRef: await nextClientRef(now),
       clientName: name,
+      clientEmail: email || null,
       originalNotes: notes,
       status: "open",
     })
@@ -61,12 +70,17 @@ export async function createPersonFromNotes(
     extraction = { context: emptyCaseContext(), model: "manual_fallback" };
   }
 
-  await createContextDraft({
+  const draft = await createContextDraft({
     caseId: caseRow.id,
     noteRevisionId,
     context: extraction.context,
     extractionModel: extraction.model,
   });
 
-  return caseRow.id;
+  return {
+    caseId: caseRow.id,
+    contextId: draft.id,
+    context: extraction.context,
+    extractionModel: extraction.model,
+  };
 }

@@ -126,13 +126,13 @@ export function fallbackReferralText(input: ReferralDraftInput): string {
     `Hello ${input.service.name},`,
     "",
     "About the woman (as she stated):",
-    ...input.womanStated.map((item) => `- ${item.label}: ${item.value}`),
+    ...input.womanStated.map((item) => `• ${item.label}: ${item.value}`),
   ];
   if (input.workerObservations.length > 0) {
     lines.push(
       "",
       "Caseworker observations:",
-      ...input.workerObservations.map((item) => `- ${item.label}: ${item.value}`),
+      ...input.workerObservations.map((item) => `• ${item.label}: ${item.value}`),
     );
   }
   lines.push("", "Please assess whether this service is suitable for referral.");

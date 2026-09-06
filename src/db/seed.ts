@@ -3,16 +3,203 @@
  * Provenance rules (docs/implementation_plan.md): every service fact carries
  * source + freshness; machine facts vs provider-only facts are distinguished.
  */
-import { sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "./index";
-import { cases, caseContexts, serviceAttributes, services } from "./schema";
+import {
+  cases,
+  caseContexts,
+  caseworkerSettings,
+  referrals,
+  serviceAttributes,
+  serviceChangeLog,
+  services,
+} from "./schema";
 
 const daysAgo = (d: number) => new Date(Date.now() - d * 24 * 60 * 60 * 1000);
+
+const sydneyDate = (date: Date = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Sydney",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+
+/** Keep one realistic, idempotent follow-up visible on My Work. */
+async function ensureDemoFollowUp() {
+  const [caseRow] = await db
+    .select({ id: cases.id, clientName: cases.clientName, clientEmail: cases.clientEmail })
+    .from(cases)
+    .where(eq(cases.clientRef, "CASE-2026-001"))
+    .limit(1);
+  const [serviceRow] = await db
+    .select({ id: services.id })
+    .from(services)
+    .where(eq(services.name, "Watershed Women's Crisis Accommodation"))
+    .limit(1);
+  if (!caseRow || !serviceRow) return;
+
+  if (!caseRow.clientName) {
+    await db.update(cases).set({ clientName: "Amira" }).where(eq(cases.id, caseRow.id));
+  }
+  if (!caseRow.clientEmail) {
+    await db.update(cases).set({ clientEmail: "amira@example.org" }).where(eq(cases.id, caseRow.id));
+  }
+
+  const [existing] = await db
+    .select({ id: referrals.id })
+    .from(referrals)
+    .where(and(eq(referrals.caseId, caseRow.id), eq(referrals.serviceId, serviceRow.id)))
+    .limit(1);
+  if (existing) return;
+
+  const [contextRow] = await db
+    .select({ id: caseContexts.id, status: caseContexts.status })
+    .from(caseContexts)
+    .where(eq(caseContexts.caseId, caseRow.id))
+    .orderBy(desc(caseContexts.version))
+    .limit(1);
+  if (!contextRow) return;
+
+  if (contextRow.status !== "approved") {
+    await db
+      .update(caseContexts)
+      .set({ status: "approved", approvedAt: new Date() })
+      .where(eq(caseContexts.id, contextRow.id));
+  }
+
+  await db.insert(referrals).values({
+    caseId: caseRow.id,
+    contextId: contextRow.id,
+    serviceId: serviceRow.id,
+    status: "sent",
+    sentAt: daysAgo(2),
+    followUpDue: sydneyDate(),
+    sharedFields: ["needs", "suburb", "children", "pets", "income", "visa", "languages", "summary"],
+    draftText:
+      "Hello Watershed team,\n\nI am following up on an urgent crisis accommodation referral for CASE-2026-001. Amira needs a safe placement with her two children and dog. Could you please confirm whether an intake call or placement is available today?\n\nKind regards,\nHannah Lee\nCaseworker, Lou's Place",
+  });
+}
+
+/** Keep the Today service-activity panel populated with idempotent demo history. */
+async function ensureServiceActivityDemo() {
+  const [southside] = await db
+    .select({ id: services.id })
+    .from(services)
+    .where(eq(services.name, "Southside DFV Legal Centre"))
+    .limit(1);
+  if (southside) {
+    await db
+      .update(services)
+      .set({ email: "intake@southsidedfv.example.org" })
+      .where(eq(services.id, southside.id));
+    const [existingHoursChange] = await db
+      .select({ id: serviceChangeLog.id })
+      .from(serviceChangeLog)
+      .where(and(eq(serviceChangeLog.serviceId, southside.id), eq(serviceChangeLog.field, "opening hours")))
+      .limit(1);
+    if (!existingHoursChange) {
+      await db.insert(serviceChangeLog).values({
+        serviceId: southside.id,
+        entity: "service",
+        field: "opening hours",
+        oldValue: "Closes at 8 pm",
+        newValue: "Closes at 9 pm",
+        changedBy: "Bright Data updater (demo)",
+        note: "Synthetic updater activity for the dashboard demonstration.",
+      });
+    }
+  }
+
+  const [brightPath] = await db
+    .select({ id: services.id })
+    .from(services)
+    .where(eq(services.name, "Bright Path Financial Counselling"))
+    .limit(1);
+  if (brightPath) {
+    await db
+      .update(services)
+      .set({ email: "referrals@brightpath.example.org" })
+      .where(eq(services.id, brightPath.id));
+  }
+
+  const [existingDiscovery] = await db
+    .select({ id: services.id })
+    .from(services)
+    .where(eq(services.name, "NSW Domestic Violence Line"))
+    .limit(1);
+  if (existingDiscovery) return;
+
+  const [discovered] = await db
+    .insert(services)
+    .values({
+      name: "NSW Domestic Violence Line",
+      organisation: "NSW Government",
+      description: "24/7 counselling and referrals for women experiencing domestic violence.",
+      status: "active",
+      website: "https://www.nsw.gov.au/community-services/domestic-and-family-support",
+      phone: "1800 656 463",
+      catchment: "NSW",
+      sourceType: "discovery_review",
+      sourceName: "NSW Government website · Bright Data discovery demo",
+      sourceUrl: "https://www.nsw.gov.au/community-services/domestic-and-family-support",
+    })
+    .returning();
+
+  await db.insert(serviceAttributes).values([
+    {
+      serviceId: discovered.id,
+      attrType: "need",
+      key: "need",
+      value: "dfv_safety",
+      sourceType: "machine",
+      sourceName: "NSW Government website · Bright Data discovery demo",
+      sourceUrl: discovered.sourceUrl,
+      retrievedAt: new Date(),
+      verificationStatus: "verified_machine",
+    },
+    {
+      serviceId: discovered.id,
+      attrType: "access",
+      key: "availability",
+      value: "24_7",
+      sourceType: "machine",
+      sourceName: "NSW Government website · Bright Data discovery demo",
+      sourceUrl: discovered.sourceUrl,
+      retrievedAt: new Date(),
+      verificationStatus: "verified_machine",
+    },
+  ]);
+
+  await db.insert(serviceChangeLog).values({
+    serviceId: discovered.id,
+    entity: "service",
+    field: "created",
+    oldValue: null,
+    newValue: discovered.name,
+    changedBy: "Bright Data discovery (demo)",
+    note: "Added to the community-service database after discovery review.",
+  });
+}
+
+async function ensureCaseworkerSettings() {
+  await db
+    .insert(caseworkerSettings)
+    .values({
+      id: "hannah-lee",
+      name: "Hannah Lee",
+      email: "hannah.lee@example.org",
+    })
+    .onConflictDoNothing();
+}
 
 async function main() {
   const existing = await db.select({ count: sql<number>`count(*)::int` }).from(services);
   if ((existing[0]?.count ?? 0) > 0) {
-    console.log("Seed skipped: services already present.");
+    await ensureDemoFollowUp();
+    await ensureServiceActivityDemo();
+    await ensureCaseworkerSettings();
+    console.log("Seed skipped: core services already present; dashboard demo activity ensured.");
     return;
   }
 
@@ -45,6 +232,7 @@ async function main() {
       status: "active",
       website: "https://southsidedfv.example.org",
       phone: "(02) 9000 0002",
+      email: "intake@southsidedfv.example.org",
       catchment: "Greater Sydney",
       sourceType: "machine",
       sourceName: "Southside DFV Legal Centre website — snapshot",
@@ -61,6 +249,7 @@ async function main() {
       status: "active",
       website: "https://brightpath.example.org",
       phone: "(02) 9000 0003",
+      email: "referrals@brightpath.example.org",
       catchment: "NSW — phone and online",
       sourceType: "machine",
       sourceName: "Bright Path website — snapshot",
@@ -169,7 +358,11 @@ async function main() {
     extractionModel: "manual-demo-seed (Phase 2 LLM extraction not built yet)",
   });
 
-  console.log("Seed complete: 5 services, 20 service_attributes, 1 case, 1 draft context.");
+  await ensureDemoFollowUp();
+  await ensureServiceActivityDemo();
+  await ensureCaseworkerSettings();
+
+  console.log("Seed complete: 5 services, 20 service_attributes, 1 case, 1 approved context, 1 follow-up.");
 }
 
 main()

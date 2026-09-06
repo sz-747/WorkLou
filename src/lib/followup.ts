@@ -167,6 +167,7 @@ export async function getDueFollowUps(today: string = sydneyDate(new Date())) {
       clientName: cases.clientName,
       caseId: cases.id,
       serviceName: services.name,
+      sentAt: referrals.sentAt,
       status: referrals.status,
       outcome: referrals.outcome,
     })

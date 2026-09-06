@@ -41,6 +41,7 @@ export async function extractDraftContext(fd: FormData): Promise<void> {
   });
 
   revalidatePath(`/women/${caseId}`);
+  revalidatePath("/clients");
 }
 
 /** Worker edits a draft in place. Approved rows are never touched. */
@@ -51,6 +52,7 @@ export async function saveDraftContext(fd: FormData): Promise<void> {
   await saveContextDraft(contextId, contextFromFormData(fd));
 
   revalidatePath(`/women/${caseId}`);
+  revalidatePath("/clients");
 }
 
 /** Worker approves a draft. Only drafts can be approved; approved rows never change. */
@@ -61,4 +63,5 @@ export async function approveContext(fd: FormData): Promise<void> {
   await approveContextDraft(contextId);
 
   revalidatePath(`/women/${caseId}`);
+  revalidatePath("/clients");
 }
