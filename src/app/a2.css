@@ -142,11 +142,13 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
 .a2s-nav {
   align-items: center;
   display: flex;
+  flex: 1 1 auto;
   gap: 4px;
   height: 64px;
   padding: 0 12px;
   position: relative;
 }
+.a2s-island { flex: 0 0 auto; }
 .a2s-logo {
   align-items: center;
   display: flex;
@@ -161,6 +163,7 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
 }
 .a2s-nav a {
   border-radius: var(--pill);
+  white-space: nowrap;
   color: var(--ink);
   font-size: 15px;
   font-weight: 500;

@@ -11,10 +11,9 @@ import { Spotlight } from "./Spotlight";
 
 const NAV = [
   { label: "Today", href: "/today" },
-  { label: "My clients", href: "/clients" },
+  { label: "People", href: "/clients" },
   { label: "Shelters", href: "/shelters" },
   { label: "Plans", href: "/plans" },
-  { label: "Letters", href: "/letters" },
   { label: "Follow-ups", href: "/follow-ups" },
 ];
 
