@@ -19,6 +19,8 @@ import { getCaseDocuments } from "../document";
 import { getReferralEventsForCase, outcomeLabel } from "../followup";
 import {
   contactLabel,
+  displayName,
+  firstNameOf,
   daysOverdue,
   dueLabel,
   humanise,
@@ -29,6 +31,9 @@ import {
 
 export type ClientRow = {
   id: string;
+  /** Her name — what every screen shows. */
+  name: string;
+  /** The de-identified data label (client_ref), kept for exports and referrals. */
   ref: string;
   focus: string;
   stage: string;
@@ -102,6 +107,7 @@ export async function getClientRows(now: Date = new Date()): Promise<ClientRow[]
 
     return {
       id: caseRow.id,
+      name: displayName(caseRow),
       ref: caseRow.clientRef,
       focus: focusOf(context),
       stage: stageOf(caseRow, caseReferrals),
@@ -118,6 +124,8 @@ export type ProfileTimelineItem = { key: string; when: string; what: string };
 
 export type ClientProfile = {
   id: string;
+  name: string;
+  firstName: string;
   ref: string;
   initials: string;
   subline: string;
@@ -195,8 +203,10 @@ export async function getClientProfile(
 
   return {
     id: caseRow.id,
+    name: displayName(caseRow),
+    firstName: firstNameOf(caseRow),
     ref: caseRow.clientRef,
-    initials: initialsOf(caseRow.clientRef),
+    initials: initialsOf(displayName(caseRow)),
     subline: joinParts([
       caseRow.clientRef,
       `opened ${shortDate(caseRow.createdAt)}`,

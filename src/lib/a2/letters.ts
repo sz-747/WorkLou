@@ -5,7 +5,7 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { caseDocuments, cases } from "../../db/schema";
-import { contactLabel, joinParts } from "./format";
+import { contactLabel, displayName, joinParts } from "./format";
 
 export type LetterRow = {
   key: string;
@@ -27,6 +27,7 @@ export async function getLetterRows(now: Date = new Date()): Promise<LetterRow[]
       id: caseDocuments.id,
       caseId: caseDocuments.caseId,
       clientRef: cases.clientRef,
+      clientName: cases.clientName,
       draftText: caseDocuments.draftText,
       status: caseDocuments.status,
       createdAt: caseDocuments.createdAt,
@@ -39,7 +40,7 @@ export async function getLetterRows(now: Date = new Date()): Promise<LetterRow[]
   return rows.map((row) => ({
     key: row.id,
     caseId: row.caseId,
-    name: `${titleOf(row.draftText)} · ${row.clientRef}`,
+    name: `${titleOf(row.draftText)} · ${displayName(row)}`,
     detail: joinParts([
       row.status === "approved" ? "approved" : "draft kept",
       contactLabel(row.approvedAt ?? row.createdAt, now),

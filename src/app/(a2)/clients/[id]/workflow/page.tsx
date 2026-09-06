@@ -9,6 +9,7 @@ import { ReferStage } from "../../../../women/[id]/ReferStage";
 import { FollowUpStage } from "../../../../women/[id]/FollowUpStage";
 import { DocumentStage } from "../../../../women/[id]/DocumentStage";
 import { loadWorkflow } from "../../../../../lib/a2/workflow";
+import { displayName } from "../../../../../lib/a2/format";
 
 /**
  * The five-stage casework workflow in the A2 visual language. The stage
@@ -43,7 +44,7 @@ export default async function Workflow({
   return (
     <>
       <header className="a2s-head">
-        <h1>Casework · {w.caseRow.clientRef}</h1>
+        <h1>{displayName(w.caseRow)}&rsquo;s casework</h1>
         <p className="a2s-sub">
           Stage {w.currentStage} of 5 · nothing becomes final without your approval
         </p>
@@ -139,7 +140,7 @@ export default async function Workflow({
         />
       </StageSheet>
 
-      <ClientBar />
+      <ClientBar name={displayName(w.caseRow)} caseRef={w.caseRow.clientRef} />
     </>
   );
 }

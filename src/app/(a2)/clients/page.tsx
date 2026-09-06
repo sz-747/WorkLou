@@ -29,7 +29,7 @@ export default async function MyClients() {
       <div className="a2s-grid">
         <Sheet>
           {rows.length === 0 ? (
-            <Empty>No cases in the database yet.</Empty>
+            <Empty>No women on your list yet.</Empty>
           ) : (
             <table className="a2s-table">
               <thead>
@@ -43,7 +43,7 @@ export default async function MyClients() {
                 {rows.map((row) => (
                   <tr key={row.id}>
                     <td className="is-name">
-                      <Link href={`/clients/${row.id}`}>{row.ref}</Link>
+                      <Link href={`/clients/${row.id}`}>{row.name}</Link>
                     </td>
                     <td>{row.focus}</td>
                     <td>{row.stage}</td>

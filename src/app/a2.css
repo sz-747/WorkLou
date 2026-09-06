@@ -609,9 +609,26 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
 .a2s-clientbar nav a:hover { background: rgb(255 255 255 / 55%); }
 
 /* ── Profile / plan / done bits ──────────────────────────────────────── */
-.a2s-profile-head { align-items: center; display: flex; gap: 18px; margin-bottom: 12px; }
-.a2s-profile-head .a2s-avatar { font-size: 18px; height: 64px; width: 64px; }
+.a2s-profile-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.a2s-profile-head .a2s-avatar { flex: 0 0 auto; font-size: 18px; height: 64px; margin-top: 4px; width: 64px; }
 .a2s-profile-head h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+.a2s-profile-id { min-width: 0; }
+.a2s-profile-actions {
+  align-items: flex-end;
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  margin-left: auto;
+}
+@media (max-width: 900px) {
+  .a2s-profile-actions { align-items: flex-start; justify-items: start; margin-left: 0; }
+  .a2s-profile-head { flex-wrap: wrap; }
+}
 .a2s-body { font-size: 15px; line-height: 1.55; margin: 0 0 12px; }
 .a2s-cols-2 { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .a2s-cols-3 { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }

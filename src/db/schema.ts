@@ -281,6 +281,11 @@ export const stagedServices = pgTable(
 export const cases = pgTable("cases", {
   id: uuid("id").defaultRandom().primaryKey(),
   clientRef: text("client_ref").notNull(),
+  /**
+   * The woman's name, used for every worker-facing screen. client_ref stays the
+   * de-identified label used for data (referral text, exports, evaluation).
+   */
+  clientName: text("client_name"),
   originalNotes: text("original_notes").notNull(),
   appointmentAt: timestamp("appointment_at", { withTimezone: true }).notNull().defaultNow(),
   status: text("status").notNull().default("open"),

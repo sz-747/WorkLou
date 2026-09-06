@@ -7,7 +7,7 @@ import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "../../db";
 import { cases, referrals, services } from "../../db/schema";
 import { getDueFollowUps, outcomeLabel } from "../followup";
-import { contactLabel, dueLabel, joinParts } from "./format";
+import { contactLabel, displayName, dueLabel, joinParts } from "./format";
 
 export type FollowUpRow = {
   key: string;
@@ -26,7 +26,7 @@ export async function getFollowUpRows(now: Date = new Date()): Promise<FollowUpR
     const meta = dueLabel(row.followUpDue, now);
     return {
       key: row.referralId,
-      name: `${row.serviceName} referral · ${row.clientRef}`,
+      name: `${row.serviceName} referral · ${displayName(row)}`,
       detail: joinParts([
         row.outcome ? outcomeLabel(row.outcome) : "awaiting reply",
         `due ${row.followUpDue ?? "–"}`,
@@ -43,6 +43,7 @@ export async function getWaitingRows(now: Date = new Date()): Promise<WaitingRow
     .select({
       id: referrals.id,
       clientRef: cases.clientRef,
+      clientName: cases.clientName,
       serviceName: services.name,
       sentAt: referrals.sentAt,
       followUpDue: referrals.followUpDue,
@@ -56,7 +57,7 @@ export async function getWaitingRows(now: Date = new Date()): Promise<WaitingRow
 
   return rows.map((row) => ({
     key: row.id,
-    name: row.clientRef,
+    name: displayName(row),
     detail: joinParts([
       row.serviceName,
       row.sentAt ? `sent ${contactLabel(row.sentAt, now)}` : null,

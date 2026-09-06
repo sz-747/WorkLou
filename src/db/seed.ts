@@ -140,6 +140,7 @@ async function main() {
     .insert(cases)
     .values({
       clientRef: "CASE-2026-001",
+      clientName: "Amira",
       originalNotes:
         "Amira (synthetic) — escaping DFV, needs crisis accommodation urgently. Two kids (5 and 8), has a dog she won't leave behind. On bridging visa E, speaks Arabic and English. Casual part-time work, low income. Waterloo area. Only safe contact: SMS to second phone, do NOT call her main number.",
       status: "open",

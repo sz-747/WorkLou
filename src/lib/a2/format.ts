@@ -58,12 +58,26 @@ export function dueLabel(due: string | null, now: Date = new Date()): string {
   return shortDate(`${due}T12:00:00Z`);
 }
 
-/** Initials for the avatar chip, from a client reference like "CASE-2026-001". */
+/** Initials for the avatar chip, from a name like "Maya Thompson". */
 export function initialsOf(ref: string): string {
   const parts = ref.split(/[\s\-_]+/).filter(Boolean);
   if (parts.length === 0) return "?";
   const last = parts[parts.length - 1];
   return (parts[0][0] + (last === parts[0] ? (parts[0][1] ?? "") : last[0])).toUpperCase();
+}
+
+/**
+ * How a woman is named on screen. Every worker-facing surface uses her name;
+ * client_ref is only the data label, so it is the fallback when no name is
+ * recorded yet.
+ */
+export function displayName(row: { clientName?: string | null; clientRef: string }): string {
+  return row.clientName?.trim() || row.clientRef;
+}
+
+/** Her first name, for possessives and headings ("Needs attention · Amira"). */
+export function firstNameOf(row: { clientName?: string | null; clientRef: string }): string {
+  return displayName(row).split(/\s+/)[0];
 }
 
 /** "housing_accommodation" → "housing accommodation". */
