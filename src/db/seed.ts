@@ -14,6 +14,7 @@ import {
   serviceChangeLog,
   services,
 } from "./schema";
+import { MOCK_ROSTER } from "./seed-roster";
 
 const daysAgo = (d: number) => new Date(Date.now() - d * 24 * 60 * 60 * 1000);
 
@@ -182,6 +183,51 @@ async function ensureServiceActivityDemo() {
   });
 }
 
+/** Seed the larger synthetic caseload roster (idempotent per client ref). */
+async function ensureMockRoster() {
+  const existing = await db.select({ ref: cases.clientRef }).from(cases);
+  const known = new Set(existing.map((row) => row.ref));
+  const missing = MOCK_ROSTER.filter((entry) => !known.has(entry.ref));
+  if (missing.length === 0) return;
+
+  for (const entry of missing) {
+    const [row] = await db
+      .insert(cases)
+      .values({
+        clientRef: entry.ref,
+        clientName: entry.name,
+        originalNotes: `${entry.name} (synthetic roster) — ${entry.note}`,
+        status: entry.status,
+        appointmentAt: daysAgo(entry.openedDaysAgo),
+        createdAt: daysAgo(entry.openedDaysAgo),
+      })
+      .returning();
+
+    await db.insert(caseContexts).values({
+      caseId: row.id,
+      version: 1,
+      context: {
+        needs: entry.needs,
+        suburb: entry.suburb,
+        catchment: null,
+        children: entry.children ? { count: entry.children } : null,
+        pets: null,
+        income: null,
+        visa: null,
+        languages: entry.languages ?? ["english"],
+        urgency: null,
+        safety_preferences: null,
+        safe_contact_method: null,
+        summary: entry.note,
+      },
+      status: entry.contextStatus,
+      extractionModel: "mock-roster-seed (synthetic demo data)",
+      approvedAt: entry.contextStatus === "approved" ? daysAgo(entry.openedDaysAgo) : null,
+    });
+  }
+  console.log(`Mock roster: inserted ${missing.length} synthetic client profiles.`);
+}
+
 async function ensureCaseworkerSettings() {
   await db
     .insert(caseworkerSettings)
@@ -198,6 +244,7 @@ async function main() {
   if ((existing[0]?.count ?? 0) > 0) {
     await ensureDemoFollowUp();
     await ensureServiceActivityDemo();
+    await ensureMockRoster();
     await ensureCaseworkerSettings();
     console.log("Seed skipped: core services already present; dashboard demo activity ensured.");
     return;
@@ -360,9 +407,10 @@ async function main() {
 
   await ensureDemoFollowUp();
   await ensureServiceActivityDemo();
+  await ensureMockRoster();
   await ensureCaseworkerSettings();
 
-  console.log("Seed complete: 5 services, 20 service_attributes, 1 case, 1 approved context, 1 follow-up.");
+  console.log("Seed complete: 5 services, 20 service_attributes, 1 case, 1 approved context, 1 follow-up, mock roster.");
 }
 
 main()

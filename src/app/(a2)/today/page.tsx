@@ -5,6 +5,8 @@ import { Empty } from "../../../components/a2/Empty";
 import { getTodayView } from "../../../lib/a2/today";
 import { getAccommodationAvailability } from "../../../lib/a2/capacity";
 import { getContributionsView } from "../../../lib/a2/contributions";
+import { db } from "../../../db";
+import { cases } from "../../../db/schema";
 
 /**
  * A2 / Today (136:139). Needs attention and follow-ups come from the casework
@@ -15,10 +17,16 @@ export const dynamic = "force-dynamic";
 
 export default async function Today() {
   const contributions = getContributionsView();
-  const [today, availability] = await Promise.all([
+  const [today, availability, directory] = await Promise.all([
     getTodayView(),
     getAccommodationAvailability(),
+    db
+      .select({ id: cases.id, name: cases.clientName, ref: cases.clientRef, status: cases.status })
+      .from(cases),
   ]);
+  const clients = directory.flatMap((row) =>
+    row.name ? [{ id: row.id, name: row.name, ref: row.ref, status: row.status }] : [],
+  );
 
   return (
     <>
@@ -34,7 +42,7 @@ export default async function Today() {
         </Link>
       </header>
 
-      <AskBar />
+      <AskBar clients={clients} />
 
       <div className="a2s-grid">
         <Sheet title={`Needs attention · ${today.needsAttention.length}`}>

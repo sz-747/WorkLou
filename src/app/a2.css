@@ -1016,6 +1016,19 @@ body::-webkit-scrollbar-thumb:hover,
 .a2s-result-head .a2s-avatar { height: 44px; width: 44px; }
 .a2s-result-name { font-size: 20px; font-weight: 600; }
 .a2s-result-line { color: var(--muted); font-size: 14px; }
+.a2s-result-list { display: grid; gap: 6px; }
+.a2s-result-row {
+  align-items: center;
+  border-radius: var(--r-lg);
+  display: flex;
+  gap: 14px;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+.a2s-result-row:hover { background: rgb(255 255 255 / 70%); }
+.a2s-result-row .a2s-avatar { height: 44px; width: 44px; }
+.a2s-result-row .a2s-row-text { display: flex; flex-direction: column; gap: 2px; }
+.a2s-result-open { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
 
 /* ── Client context bar ──────────────────────────────────────────────── */
 .a2s-clientbar {
