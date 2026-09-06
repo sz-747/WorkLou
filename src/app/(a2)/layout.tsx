@@ -1,5 +1,6 @@
 import "../a2.css";
 import { Shell } from "../../components/a2/Shell";
+import { ShellFooter } from "../../components/a2/ShellFooter";
 import { Life } from "../../components/a2/Life";
 import { getAlerts } from "../../lib/a2/alerts";
 
@@ -17,6 +18,7 @@ export default async function A2Layout({ children }: { children: React.ReactNode
         <Life />
         <Shell alerts={alerts} overdueCount={overdueCount} />
         {children}
+        <ShellFooter />
       </div>
     </div>
   );

@@ -100,12 +100,26 @@ body::-webkit-scrollbar-thumb:hover,
 .a2s *::-webkit-scrollbar-thumb:hover { background-color: #db7945; }
 
 .a2s-page {
+  display: flex;
+  flex-direction: column;
   margin: 0 auto;
   max-width: 1440px;
   min-height: 100vh;
   padding: 20px 120px 80px;
   position: relative;
 }
+.a2s-shell-foot {
+  align-items: center;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 16px;
+  position: relative;
+  z-index: 1;
+}
+.a2s-shell-exit { font-size: 13px; padding: 8px 14px; }
 @media (max-width: 1100px) {
   .a2s-page { padding: 20px 32px 64px; }
 }
