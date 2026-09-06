@@ -685,3 +685,7 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
 .a2s-state-demo.is-press { background: var(--matte-press); }
 .a2s-state-demo.is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
 .a2s-state-demo.is-disabled { opacity: 0.4; }
+
+/* Plan — one column, three steps top to bottom so it reads as a workflow. */
+.a2s-plan-flow { display: grid; gap: 16px; margin: 0 auto; max-width: 780px; }
+.a2s-plan-flow textarea.a2s-field { height: auto; resize: vertical; }
