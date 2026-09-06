@@ -837,6 +837,17 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
   width: 100%;
 }
 .a2s-field::placeholder { color: var(--muted); }
+/* Intake form (clients/new): stacked labelled fields inside a glass sheet. */
+.a2s-form { display: grid; gap: 16px; }
+.a2s-form-row { display: grid; gap: 6px; }
+.a2s-form-error {
+  background: rgb(220 38 38 / 10%);
+  border-radius: var(--r-md);
+  color: #b91c1c;
+  font-size: 14px;
+  margin: 0;
+  padding: 10px 12px;
+}
 .a2s-dim { color: var(--muted); font-size: 12px; }
 
 /* ── States grid (A2 / States) ───────────────────────────────────────── */

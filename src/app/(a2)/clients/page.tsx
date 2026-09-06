@@ -24,6 +24,12 @@ export default async function MyClients() {
         </p>
       </header>
 
+      <div className="a2s-btn-row" style={{ marginBottom: 16 }}>
+        <Link className="a2s-matte a2s-btn" href="/clients/new">
+          Add New Person
+        </Link>
+      </div>
+
       <Filters options={FILTERS} />
 
       <div className="a2s-grid">
