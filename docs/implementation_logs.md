@@ -17,6 +17,69 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-06 — Contribution medals and legacy navigation removal
+
+- Changes: enlarged every contribution square from 12px to 16px; replaced native gray scrollbars with thin peach-orange tracks and thumbs; added a four-medal achievement gallery using the local Lou's Place logo and dimensional orange/blue treatments. Badge titles use black for contrast; badges tilt on hover and flip on click to show the earned date. Removed the old global My Work, Women and System tools navigation from the root layout and deleted its unused component so it cannot appear above any route.
+- Verification: `npx tsc --noEmit` and `git diff --check` passed; source search confirmed the legacy root navigation component is no longer referenced.
+
+## 2026-09-06 — Simplified Contributions page
+
+- Changes: removed the This month breakdown card and The work behind every square card, including their unused view-model data and styles. The summary statistics and 365-day activity grid remain.
+- Verification: `npx tsc --noEmit` passed.
+
+## 2026-09-06 — Caseworker contribution activity
+
+- Why: the dashboard should acknowledge the caseworker's impact without adding noise or gamified badges.
+- Changes: added a compact Women helped widget beside the Today heading with today and month totals. Added Contributions to Hannah's account dropdown and a dedicated local-demo page with four summary statistics, a 365-day GitHub-style orange activity grid, hover details for date/referrals/follow-ups, and a monthly support breakdown.
+- Data: stable synthetic local-demo activity; no production reporting claim and no database schema change.
+- Verification: `npx tsc --noEmit` passed; `/today` and `/contributions` returned HTTP 200 with the women-helped widget, Contributions links, year-grid markup and day-level referral details; changed-file diff check passed.
+
+## 2026-09-06 — Live extraction and ranking boundary check
+
+- Requested check: run a real OpenRouter note extraction and rank the resulting case against the current Postgres services.
+- OpenRouter result: blocked before the request. `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` and `OPENROUTER_API_KEY` are absent from the local process, Windows user and machine environments; the Base44 environment file declares no populated secrets. No fallback extraction was presented as a successful LLM test.
+- Postgres result: passed independently with a synthetic structured context matching the intended intake. Six active services were evaluated. The top three were Watershed Women's Crisis Accommodation (66), Southside DFV Legal Centre (39), and NSW Domestic Violence Line (34), with matched criteria and provider-confirmation trade-offs returned for each.
+- Bright Data: not invoked because this check ranked the records already in Postgres. Bright Data refreshes and discovers service records upstream; it does not calculate the referral ranking.
+
+## 2026-09-06 — Intake-to-ranked-referral profile flow
+
+- Why: after extraction, the caseworker needs one obvious path into the new person's referral decision page, with the case facts and ranking rationale visible together.
+- Changes: renamed the extracted-information action to Review Top 3 Referrals and kept its exact new case ID through approval and redirect. The destination is now labelled as the person's referral profile; income, languages, children and pets lead the priority pills. The top three services use a side-by-side layout with an enlarged first result and smaller second and third results. Every card separates matched strengths from mismatches, stale facts and facts that need provider confirmation.
+- Ranking: LLM extraction remains upstream. The referral order stays deterministic and auditable at 100 points: needs 40, eligibility 35, location 15 and evidence freshness 10.
+- Verification: `npx tsc --noEmit` passed. `/clients/new` and the existing case's `/plan` returned HTTP 200; the plan response contained the referral profile, Top 3 heading, trade-off sections, and income, languages, children and pets. Changed-file diff check passed.
+
+## 2026-09-06 — Simplified profile and local demo letter
+
+- Why: profile actions competed for attention, the account menu appeared beneath profile content, and the ranked referral plan was difficult to find.
+- Changes: lifted the shared shell above page content so account popovers overlap correctly; removed the scattered profile-header actions and duplicate Continue button; placed a prominent Top referrals card directly below Recent contact; moved the close action into a small Profile options card; added a polished synthetic Amira support referral PDF as a clickable local file.
+- Demo target: local-first. The PDF is served from the local Next.js app and no Base44 connection is required.
+- Verification: PDF is one page, contains the expected synthetic-demo label and Amira content, and its rendered page passed visual inspection. TypeScript passed; the live profile contained Top referrals and the PDF link without the old scattered action; profile and PDF routes returned HTTP 200 with `application/pdf` for the file.
+
+## 2026-09-06 — Gmail copy-and-paste referral handoff
+
+- Why: the demo needs a real, understandable email handoff without storing Gmail credentials or claiming that WorkLou sent an external message.
+- Changes: the editable referral modal now copies the complete message body, opens Gmail Compose in a popup with the provider address and subject prefilled, and tells the worker to paste and send. The generated draft includes structured bullet sections plus Hannah's saved signature. After sending in Gmail, the worker explicitly marks the referral as sent so it appears in Follow-ups.
+- External effects: WorkLou does not send the email or inspect Gmail; Gmail remains the sending surface.
+- Verification: `npx tsc --noEmit` passed; `/shelters` returned HTTP 200 from the running local app; changed-file diff check passed.
+
+## 2026-09-06 - Synthetic My Work follow-up example
+- Branch: `backend-skeleton-setup`
+- Changes: the idempotent seed now ensures CASE-2026-001 is named Amira, has an approved context, and has one sent Watershed referral due for follow-up today. The example includes a realistic prepared message and appears on both My Work and Follow-ups.
+- DB changes: demo data only; no schema changes.
+- Tests run: seed applied to the current local database. Broader verification deferred while visual tweaking continues.
+- Result: pass.
+- Known issues: none.
+- Next phase: continue visual tweaks.
+
+## 2026-09-06 - Case intake, scored service plan, and faster local navigation
+- Branch: `backend-skeleton-setup`
+- Changes: replaced Add Person with a two-panel notes-first intake. The large notes area occupies four shares of the page and the Postgres-aligned extracted fields occupy one share. Extraction now prepares deterministic service rankings immediately and prefetches the plan route. Rebuilt the plan as a person overview, critical-information glass pills, vertical top-three service cards with phone actions and visible fit and trade-off evidence, and a sticky completion rail. Referral emails now open in a review modal; approval records the referral as sent and places it in Follow-ups. Removed Quick Exit and generic footer links; client-scoped pages retain only the current person's name. Button-style links no longer use underlines. Cards use softer translucent glass surfaces and shadows. Added route-level loading feedback and enabled Turbopack for local development.
+- DB changes: no schema changes. Existing case context, service attribute, referral, and follow-up tables are reused. Fit scoring is deterministic: need coverage 40%, eligibility 35%, location 15%, and evidence freshness 10%.
+- Tests run: production build and TypeScript clean; matching 28/28, refer 25/25, and follow-up 21/21. Live synthetic browser flow passed: notes to extraction, five services ranked, top-three plan, prepared referral modal, approval, and appearance in Follow-ups. The exact synthetic case and cascaded rows were removed afterward. Warm route requests on the Windows dev server measured 0.76 to 0.89 seconds, down from about 2 seconds inside Docker; route loading feedback covers cold compilation.
+- Result: pass.
+- Known issues: the first request after a fresh development-server restart still compiles the route and is much slower than warm navigation. This is development-only behavior; a production build precompiles routes.
+- Next phase: continue visual tweaks, then prepare the Base44 handoff.
+
 ## 2026-09-06 — Base44 native scheduler bridge prepared
 - Branch: `project-status-overview`
 - Changes: added two thin Base44/Deno wrapper functions (`runWorkLouUpdater`, `runWorkLouDiscovery`) with inactive daily automation definitions, shared runtime code, and a Base44 handoff prompt. The wrappers call the existing Next routes so Postgres remains canonical and the business logic is not duplicated. Both machine-triggered routes now fail closed behind `SCHEDULER_SECRET`; the bounded discovery schedule uses `limit=1`. Local compose sidecars send the same bearer token with a development-only default.
@@ -260,6 +323,33 @@ Manual test steps (Phase 8):
 - Result: pass (10/10 brightdata, 17/17 discovery, 19/17 updater, live manual discovery run: SERP ok, blocked URLs logged as plain source failures, no unlocker references anywhere)
 - Known issues: blocked provider sites (HTTP 403) now always end as logged source failures — expected demo behaviour
 - Next phase: n/a
+
+## 2026-09-06 — Separated the five-step journey from follow-up history
+
+- Why: the active profile and follow-up links still opened the stale sage-green vertical workflow, and the Follow-ups page mixed case progression with referral communication history.
+- Changes: every profile now shows the five referral stages in a compact warm-glass journey; the ranked plan uses the same five stages in its sticky action rail. Follow-ups is now a separate Postgres-backed history of sent emails, service replies and recorded actions, filterable by overdue state, location, children, pets, income, language and visa. My Work, People and Follow-ups link to the new history route for the selected person.
+- Stale routes: /women, /women/[id] and /clients/[id]/workflow now redirect into the active A2 interface. The unused A2 vertical workflow loader and sheet component were removed.
+- Visual system: active green and seafoam accents were replaced with the current white, dim-orange and dusty-blue glass palette.
+- Tests run: deferred while the visual-tweak batch is active; git diff --check was used for the edited source.
+- Result: implementation complete, visual browser review pending with the rest of the tweak batch.
+- Known issues: the retained files under src/app/women/[id]/ are inactive legacy action/component code and have no reachable page.
+
+## 2026-09-06 — Faster navigation and Today service activity
+
+- Why: the navbar gave no visible response until the next server-rendered page completed, and the first development visit could spend about ten seconds compiling a route. The Today rail also showed accommodation rows instead of the background service-data work.
+- Changes: the nav loop now moves immediately on click and all five dashboard routes prefetch after the shell loads. Added a prominent New call note shortcut beside the caseworker controls. Replaced Accommodation availability with Postgres-backed recent service changes and newly discovered services, including source website links.
+- Demo data: the idempotent seed adds one synthetic Bright Data hours change and one discovery-reviewed NSW Domestic Violence Line record so both Today sections are visible.
+- Performance evidence: People database reads completed in 16 ms. A clean Turbopack server compiled Today in 9.2 s once; warm server renders were 562–643 ms. The remaining large first-click pause was route compilation, so route prefetching now moves that work into the background.
+- Verification: /today and /clients returned HTTP 200 after the clean local-only restart; the wider test suite remains deferred until the visual-tweak batch ends.
+
+## 2026-09-06 — Amira referral demo and caseworker email settings
+
+- Why: the demo needed one understandable path from call notes to a ranked referral, with email and phone contact choices, while the raw Services directory forced caseworkers to interpret the database themselves.
+- Changes: added an optional safe client email to intake and profiles; added Hannah Lee Settings with a persistent caseworker email; made Settings reachable from Hannah's identity menu. Replaced the Shelters directory with the latest approved person's ranked top-three service plan. Service cards and the draft review show provider email, phone, From and To details, with a call banner for missing or current information.
+- Mock interaction: Amira's approved structured context drives the top-three results. Synthetic Southside and Bright Path referral addresses provide demo email actions; services without email become call-only. Approve mock send records the referral in Follow-ups without claiming external delivery.
+- Completion: profiles now include Close note and return to People, which records the case closed and returns to the People list.
+- DB changes: added cases.client_email and the single-caseworker caseworker_settings table; the idempotent seed supplies safe example.org addresses for Amira and Hannah.
+- Verification: schema push and seed completed; /settings, /shelters, /clients/new and an actual profile returned HTTP 200 with the expected controls; TypeScript passed.
 
 ## 2026-09-05 — Demo follow-up example seeder (Phase 6)
 

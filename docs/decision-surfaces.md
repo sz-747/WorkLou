@@ -88,3 +88,19 @@
 - **Status:** Decided
 - **Current behavior:** Freeze human-labeled discovery queries and known source URLs before tuning. Measure Precision@5, known-service recall within two pages, duplicate/junk rate, retrieval success, structured-fact yield, and p50/p95 external latency. Keep these results separate from deterministic Postgres matching metrics.
 - **Evidence:** Steve identified search speed and result quality as the constraints, while confirming that Base44 credits are available for repeated testing.
+
+## DS-012: How should service trade-offs affect ranking?
+
+- **Question:** Should a known mismatch hide a service, or remain visible when other parts of the service may still help?
+- **Why it matters:** A strict exclusion can remove a nearby or otherwise useful option, while an unexplained score can hide why the system ranked it.
+- **Status:** Decided
+- **Current behavior:** Rank every service with a deterministic score out of 100: need coverage 40%, eligibility fit 35%, location 15%, and current evidence 10%. Show the top three vertically with every match, mismatch, and unknown visible. A mismatch lowers the score and appears as a trade-off; it does not remove the service from the worker's view.
+- **Evidence:** Steve requested scored top-three results and explicitly described a nearby second-ranked service that might not accept children but should remain available for caseworker judgment.
+
+## DS-013: What does approving a prepared referral do in the demo?
+
+- **Question:** Does approval send an external email, save a draft, or enter the internal follow-up workflow?
+- **Why it matters:** An external send is irreversible and needs provider credentials, while the current demo has no email delivery integration.
+- **Status:** Decided
+- **Current behavior:** Approval records the prepared referral as sent inside WorkLou and gives it a follow-up date. It then appears in Follow-ups. The dashboard does not transmit an external email.
+- **Evidence:** Steve wants the approved item sent to the Follow-ups tab and wants any alternative outreach handled outside the dashboard; the current backend already supports sent referral records and follow-up dates but no email provider.
