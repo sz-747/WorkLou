@@ -21,7 +21,14 @@ const NAV = [
 
 /** Nav / Pill + Nav / Island from the A2 frames, with the alerts and identity
  *  popovers (A2 / Today · alerts) and the spotlight overlay (A2 / Spotlight). */
-export function Shell({ alerts }: { alerts: AlertsView }) {
+export function Shell({
+  alerts,
+  overdueCount,
+}: {
+  alerts: AlertsView;
+  /** Follow-ups past their due date — surfaced as a red count on that tab. */
+  overdueCount: number;
+}) {
   const pathname = usePathname() ?? "";
   const [open, setOpen] = useState<"alerts" | "identity" | null>(null);
   const [spotlight, setSpotlight] = useState(false);
@@ -40,6 +47,14 @@ export function Shell({ alerts }: { alerts: AlertsView }) {
             aria-current={pathname.startsWith(item.href) ? "page" : undefined}
           >
             {item.label}
+            {item.href === "/follow-ups" && overdueCount > 0 && (
+              <span
+                className="a2s-nav-badge"
+                aria-label={`${overdueCount} follow-up${overdueCount === 1 ? "" : "s"} overdue`}
+              >
+                {overdueCount}
+              </span>
+            )}
           </Link>
         ))}
       </div>

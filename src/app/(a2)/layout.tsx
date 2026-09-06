@@ -9,12 +9,13 @@ export const dynamic = "force-dynamic";
 
 export default async function A2Layout({ children }: { children: React.ReactNode }) {
   const alerts = await getAlerts();
+  const overdueCount = alerts.rows.filter((row) => row.kind === "Overdue").length;
 
   return (
     <div className="a2s">
       <div className="a2s-page">
         <Life />
-        <Shell alerts={alerts} />
+        <Shell alerts={alerts} overdueCount={overdueCount} />
         {children}
       </div>
     </div>

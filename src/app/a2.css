@@ -181,6 +181,21 @@ body:has(.a2s) { margin: 0; max-width: none; padding: 0; }
   text-decoration: none;
   transition: background-color 120ms ease, transform 120ms ease;
 }
+/* Overdue count on the Follow-ups tab — red, small, never shown at zero. */
+.a2s-nav a { align-items: center; display: inline-flex; gap: 6px; }
+.a2s-nav-badge {
+  align-items: center;
+  background: #dc2626;
+  border-radius: var(--pill);
+  color: #fff;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 600;
+  height: 17px;
+  justify-content: center;
+  min-width: 17px;
+  padding: 0 5px;
+}
 .a2s-nav a:hover { background: rgb(255 255 255 / 45%); transform: translateY(-2px); }
 .a2s-nav a:active { background: rgb(255 255 255 / 20%); transform: none; }
 .a2s-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
