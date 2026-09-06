@@ -41,6 +41,10 @@ One phase per workflow step. Each phase gets its own branch from latest `main`, 
 5. **Outcome analytics**: referral outcomes accumulate — surface "which services actually deliver support" in Find support.
 6. **Case-list ergonomics**: multiple concurrent cases, search, and closed-case handling.
 
+## Local preview review — IN PROGRESS (2026-09-06)
+
+Branch `codex/local-preview` integrates the latest existing glossy UI (`backend-skeleton-setup` through `cb89593`) for local review. Persistent local Postgres and `npm run local` are configured; Base44 publication is deferred. One missing `sentAt` query field was fixed so the latest Follow-ups UI builds. See `docs/local-preview.md` for startup and review steps. Figma refinement belongs on a separate subsequent branch after this review.
+
 ## Phase rules
 
 - Per `AGENTS.md`: start from latest main, read all four docs, work only the requested phase, do not start the next phase.

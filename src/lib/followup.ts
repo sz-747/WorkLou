@@ -162,6 +162,7 @@ export async function getDueFollowUps(today: string = sydneyDate(new Date())) {
   return db
     .select({
       referralId: referrals.id,
+      sentAt: referrals.sentAt,
       followUpDue: referrals.followUpDue,
       clientRef: cases.clientRef,
       clientName: cases.clientName,

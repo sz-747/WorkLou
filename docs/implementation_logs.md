@@ -17,6 +17,15 @@ Append-only. New entries at the TOP (below this header block). Never edit or del
 
 ---
 
+## 2026-09-06 — Current glossy UI local preview
+- Branch: `codex/local-preview`, created from latest main then fast-forwarded to `backend-skeleton-setup` at `cb89593` (which includes `figma-ui-implementation`). Main and those shared feature branches are unchanged.
+- Changes: local startup/setup scripts with a dedicated persistent Postgres database and loopback-only web server; ignored local data/log directory; local review instructions. Fixed the current branch's build failure by returning `sentAt` from `getDueFollowUps`, as required by the latest Follow-ups view model. No visual restyling.
+- DB changes: no schema edits; current branch schema initialized in a new local preview database with the existing synthetic seed (Amira, five services). No Base44 or production data touched.
+- Tests run: production build passed; Follow-ups suite 21/21; local startup and repeat setup preserve seed data; HTTP checks cover current navigation pages, new intake, client profile/plan/workflow and logo; Chrome loaded `/today` with the live local case count. Shell syntax and Git whitespace checks passed.
+- Result: local preview ready for user review. Base44 hosting is deferred by user instruction.
+- Known issues: live AI extraction/drafting and discovery need local provider configuration; empty follow-up and letter lists are expected with the initial seed. Existing mock assistant/identity surfaces remain as supplied by the UI branch.
+- Next phase: user reviews the current local UI, then separate Figma refinement branch. Manual steps: `docs/local-preview.md`.
+
 ## 2026-09-06 — Base44 native scheduler bridge prepared
 - Branch: `project-status-overview`
 - Changes: added two thin Base44/Deno wrapper functions (`runWorkLouUpdater`, `runWorkLouDiscovery`) with inactive daily automation definitions, shared runtime code, and a Base44 handoff prompt. The wrappers call the existing Next routes so Postgres remains canonical and the business logic is not duplicated. Both machine-triggered routes now fail closed behind `SCHEDULER_SECRET`; the bounded discovery schedule uses `limit=1`. Local compose sidecars send the same bearer token with a development-only default.
